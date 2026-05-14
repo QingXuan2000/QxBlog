@@ -35,7 +35,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .github/script/node_modules
-          key: bun-modules-${{ runner.os }}-${{ hashFiles('.github/script/bun.lockb') }}
+          key: bun-modules-${{ runner.os }}-${{ hashFiles('.github/script/bun.lock') }}
 
       - name: 📦安装 Bun 依赖
         working-directory: .github/script
