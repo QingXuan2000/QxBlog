@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const { JSDOM } = require('jsdom');
 const featherdown = require('featherdown');
 
 const ROOT = path.resolve(__dirname, '../..');
@@ -360,7 +359,7 @@ async function main() {
             id: issue.id,
             slug,
             title: issue.title,
-            author: issue.author,
+            author: siteCfg.site?.author || issue.author,
             date: localDate,
             labels: issue.labels,
         };
