@@ -1,6 +1,20 @@
-# QxBlog
+<div align="center">
+    <img src="img/logo.svg" alt="QxBlog Logo" width="120" height="120">
+    <h1>QxBlog</h1>
+    <p>基于 GitHub Issues 的自动化博客框架</p>
+
+![License](https://img.shields.io/github/license/QingXuan2000/QxBlog?style=for-the-badge)
+![GitHub stars](https://img.shields.io/github/stars/QingXuan2000/QxBlog?style=for-the-badge)
+![GitHub issues](https://img.shields.io/github/issues/QingXuan2000/QxBlog?style=for-the-badge)
+![GitHub Workflow](https://img.shields.io/github/actions/workflow/status/QingXuan2000/QxBlog/qingblog-build.yml?style=for-the-badge)
+
+</div>
 
 基于 GitHub Issues 驱动的静态个人博客。通过 Issues 撰写 Markdown 文章，GitHub Actions 自动构建生成静态页面，无需本地环境。
+
+## 演示
+
+![首页截图](img/home-page-img.png)
 
 ## 技术栈
 
@@ -48,12 +62,34 @@
     └── script/                 # 静态站点生成器
 ```
 
-## 使用方式
+## 运行流程
 
-1. **创建 Issue** 撰写文章，支持 Markdown，添加 Label 作为分类
-2. **GitHub Actions** 自动触发构建，生成文章页面并更新列表
-3. **编辑或删除 Issue** 会同步更新对应文章
-4. 站点配置修改 `config/siteConfig.json`，关于页、友链、版权等信息均在此集中管理
+### 文章发布
+
+```
+创建 Issue（Markdown + Label） 
+    → GitHub Actions 触发构建
+    → featherdown 渲染 Markdown
+    → 生成文章 HTML（articles/pages/{id}.html）
+    → 更新分页 JSON（blogData/articles/）
+    → 更新分类 JSON（blogData/categories/）
+    → 重新生成文章列表、分类列表、首页
+    → 提交推送，GitHub Pages 自动部署
+```
+
+### 前端加载
+
+```
+页面加载 → 内联脚本注入 data-theme（防闪烁）
+    → QxConfig 加载站点配置，渲染导航栏、侧边栏、Footer
+    → QxArticles 从 blogData/articles/{page}.json 拉取分页数据
+    → 动态渲染文章卡片 + 分页组件
+    → 分类页同理，按 data-source 区分数据源
+```
+
+### 删除 / 编辑
+
+编辑 Issue 触发相同流程，覆盖对应 `{id}.html` 和 JSON 分页。删除 Issue 移除文章文件并从索引中清除。
 
 ## 构建配置
 
@@ -65,3 +101,4 @@
     "maxArticlesPerPage": 15
 }
 ```
+
