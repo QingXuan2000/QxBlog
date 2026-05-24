@@ -65,7 +65,7 @@
 ├── css/
 │   ├── default.css                  #   全局样式
 │   └── font-awesome.min.css         #   图标库
-├── fonts/                           # Inter + 江城圆体 + FontAwesome
+├── fonts/                           # Inter + FontAwesome
 ├── img/                             # Logo / 头像 / 截图
 ├── favicon.svg                      # 站点图标
 ├── config/
