@@ -77,6 +77,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let isDragging = false;
     let hasDragged = false;
     let lbScale = 1;
+    let initialPinchDistance = 0;
+    let initialPinchScale = 1;
+    let touchCount = 0;
 
     const lockScroll = (locked) => {
         document.documentElement.style.overflow = locked ? 'hidden' : '';
@@ -110,12 +113,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 300);
     };
 
+    const getTouchDistance = (touch1, touch2) => {
+        const dx = touch1.clientX - touch2.clientX;
+        const dy = touch1.clientY - touch2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    const getTouchCenter = (touch1, touch2) => {
+        return {
+            x: (touch1.clientX + touch2.clientX) / 2,
+            y: (touch1.clientY + touch2.clientY) / 2
+        };
+    };
+
     document.querySelectorAll('.qx-post-body img').forEach(img => {
         img.addEventListener('click', () => {
             openLightbox(img.src);
         });
     });
 
+    // 鼠标事件
     lbImg.addEventListener('mousedown', (e) => {
         e.preventDefault();
         isDragging = true;
@@ -160,6 +177,75 @@ document.addEventListener('DOMContentLoaded', async () => {
         imgStartY += (ratio - 1) * (imgRect.height / 2 - cy);
         applyLbTransform();
     }, { passive: false });
+
+    // 触摸事件 - 移动端支持
+    lbOverlay.addEventListener('touchstart', (e) => {
+        if (!lbOverlay.classList.contains('is-open')) return;
+        e.preventDefault();
+        touchCount = e.touches.length;
+        
+        if (touchCount === 1) {
+            // 单指拖动
+            const touch = e.touches[0];
+            isDragging = true;
+            hasDragged = false;
+            lbOverlay.classList.add('is-dragging');
+            dragStartX = touch.clientX;
+            dragStartY = touch.clientY;
+        } else if (touchCount === 2) {
+            // 双指缩放
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            initialPinchDistance = getTouchDistance(touch1, touch2);
+            initialPinchScale = lbScale;
+        }
+    }, { passive: false });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!lbOverlay.classList.contains('is-open')) return;
+        e.preventDefault();
+        touchCount = e.touches.length;
+        
+        if (touchCount === 1 && isDragging) {
+            // 单指拖动
+            const touch = e.touches[0];
+            const dx = touch.clientX - dragStartX;
+            const dy = touch.clientY - dragStartY;
+            if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+                hasDragged = true;
+            }
+            imgStartX += dx;
+            imgStartY += dy;
+            dragStartX = touch.clientX;
+            dragStartY = touch.clientY;
+            applyLbTransform();
+        } else if (touchCount === 2) {
+            // 双指缩放
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            const currentDistance = getTouchDistance(touch1, touch2);
+            const center = getTouchCenter(touch1, touch2);
+            const oldScale = lbScale;
+            lbScale = Math.min(10, Math.max(0.5, initialPinchScale * (currentDistance / initialPinchDistance)));
+            if (lbScale !== oldScale) {
+                const imgRect = lbImg.getBoundingClientRect();
+                const cx = center.x - imgRect.left;
+                const cy = center.y - imgRect.top;
+                const ratio = lbScale / oldScale;
+                imgStartX += (ratio - 1) * (imgRect.width / 2 - cx);
+                imgStartY += (ratio - 1) * (imgRect.height / 2 - cy);
+                applyLbTransform();
+            }
+        }
+    }, { passive: false });
+
+    document.addEventListener('touchend', () => {
+        if (isDragging) {
+            isDragging = false;
+            lbOverlay.classList.remove('is-dragging');
+        }
+        touchCount = 0;
+    });
 
     lbClose.addEventListener('click', (e) => {
         e.stopPropagation();
