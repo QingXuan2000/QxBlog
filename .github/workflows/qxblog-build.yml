@@ -38,6 +38,7 @@ jobs:
 
       - name: "[Build] 启动构建脚本"
         env:
+          GH_TOKEN: ${{ github.token }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
           ISSUE_DATE: ${{ github.event.issue.updated_at }}
@@ -45,7 +46,7 @@ jobs:
           ISSUE_LABELS: ${{ toJson(github.event.issue.labels.*.name) }}
           ISSUE_ID: ${{ github.event.issue.number }}
           ISSUE_ACTION: ${{ github.event.action }}
-        run: bun .github/script/qxBlogBuild.js
+        run: bun .github/script/qxBlogBuild.js github
 
       - name: "[Push] 提交并推送更改"
         uses: stefanzweifel/git-auto-commit-action@v5
@@ -58,7 +59,7 @@ jobs:
         run: |
           mkdir -p _site
           cp -r index.html 404.html favicon.svg _site/ 2>/dev/null || true
-          cp -r css js fonts img articles categories about blogData config _site/
+          cp -r css js fonts img posts categories about articles blogData config _site/
 
       - name: "[Upload] 上传 Pages 产物"
         uses: actions/upload-pages-artifact@v3

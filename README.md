@@ -1,4 +1,4 @@
-﻿# QxBlog
+# QxBlog
 
 QxBlog 是一个基于 GitHub Issues 的静态博客项目。
 
@@ -23,12 +23,16 @@ QxBlog/
 ├─ articles/
 │  ├─ index.html
 │  └─ pages/{id}.html
+├─ posts/
+│  └─ {id}.html
 ├─ categories/
 │  ├─ index.html
 │  └─ {label}/index.html
 ├─ blogData/
 │  ├─ articles.json
-│  └─ categories.json
+│  ├─ categories.json
+│  └─ markdown/
+│     └─ {id}.md
 ├─ config/
 │  ├─ buildConfig.json
 │  └─ siteConfig.json
@@ -111,6 +115,76 @@ QxBlog/
 3. 在 GitHub Issues 发布文章（标题 + Markdown + 标签）
 4. 等待 GitHub Actions 自动构建部署
 
+## 本地构建
+
+如果你想在本地预览或测试文章，可以使用本地构建功能直接从 Markdown 文件生成 HTML 页面。
+
+### Markdown 格式要求
+
+在 `blogData/markdown/{id}.md` 中，文章需要包含标准的 YAML frontmatter：
+
+```yaml
+---
+title: "文章标题"
+date: "2026-05-31T12:00:00.000+08:00"
+tags: ["标签1", "标签2"]
+author: "作者名"
+id: 1
+---
+
+文章正文内容...
+```
+
+### 使用步骤
+
+1. 确保在项目根目录下
+2. 进入脚本目录：
+   ```bash
+   cd .github/script
+   ```
+3. 运行构建命令：
+   ```bash
+   bun qxBlogBuild.js local
+   ```
+
+### 可用命令
+
+```bash
+# 本地构建所有文章（不提供 ID）
+bun qxBlogBuild.js local
+
+# 本地构建单篇文章
+bun qxBlogBuild.js local <文章ID>
+
+# 从 GitHub Issues 构建
+bun qxBlogBuild.js github
+
+# 查看帮助
+bun qxBlogBuild.js --help
+```
+
+### 示例
+
+构建所有本地文章：
+```bash
+bun qxBlogBuild.js local
+```
+
+构建 ID 为 1 的文章：
+```bash
+bun qxBlogBuild.js local 1
+```
+
+### 说明
+
+- 本地构建会：
+  - 读取 `blogData/markdown/{id}.md`
+  - 解析 frontmatter 和正文内容
+  - 使用 unified 渲染 Markdown
+  - 生成 `posts/{id}.html` 文章页
+  - 更新 `blogData/articles.json` 和 `blogData/categories.json`
+- 如果 ID 已存在于 `articles.json`，会自动替换该文章
+
 ## 部署指南
 
 QxBlog 推荐部署到 GitHub Pages，配合仓库内置工作流实现自动构建。
@@ -144,8 +218,10 @@ QxBlog 推荐部署到 GitHub Pages，配合仓库内置工作流实现自动构
 4. 提交后，Actions 会自动更新：
    - `blogData/articles.json`
    - `blogData/categories.json`
-   - `articles/pages/{id}.html`
-   - `categories/{label}/index.html`
+   - `blogData/markdown/{id}.md`
+   - `posts/{id}.html`
+
+**注意**：默认所有 Issue 都会被处理为文章，如果你要排除某个 Issue，添加 `no-article` 标签即可。
 
 ### 5) 访问站点
 
@@ -179,10 +255,9 @@ QxBlog 推荐部署到 GitHub Pages，配合仓库内置工作流实现自动构
 
 重置站点文章与标签可执行：
 
-- `blogData/articles.json` 设为 `{}`
+- `blogData/articles.json` 设为 `[]`
 - `blogData/categories.json` 设为 `[]`
-- 清空 `articles/pages/`
-- 清空 `categories/` 下分类目录（保留 `categories/index.html`）
+- 清空 `posts/`
 
 ## 编码建议
 
