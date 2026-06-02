@@ -2,7 +2,7 @@ name: "[CI] QingBlog 构建与部署"
 
 on:
   issues:
-    types: [opened, edited, deleted, reopened]
+    types: [opened, edited, deleted, reopened, closed]
 
 jobs:
   build-and-deploy:
@@ -18,8 +18,14 @@ jobs:
       - name: "[Checkout] 检出代码仓库"
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "[Fetch] 获取最新的 articles.json"
+        run: |
+          if [ -f "blogData/articles.json" ]; then
+            echo "Using existing articles.json"
+          fi
 
       - name: "[Setup] 配置 Bun 环境"
         uses: oven-sh/setup-bun@v2
@@ -46,19 +52,19 @@ jobs:
           ISSUE_LABELS: ${{ toJson(github.event.issue.labels.*.name) }}
           ISSUE_ID: ${{ github.event.issue.number }}
           ISSUE_ACTION: ${{ github.event.action }}
-        run: bun .github/script/qxBlogBuild.js github
+        run: bun .github/script/qxBlogBuild.js ci build
 
       - name: "[Push] 提交并推送更改"
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "[Update] ${{ github.event.action == 'deleted' && '删除文章' || '更新文章' }}: ${{ github.event.issue.title }}"
+          commit_message: "[Update] ${{ github.event.action == 'deleted' && '删除文章' || (github.event.action == 'closed' && '关闭文章' || '更新文章') }}: ${{ github.event.issue.title }}"
           file_pattern: '*'
           push_options: '--force-with-lease'
 
       - name: "[Prepare] 准备部署文件"
         run: |
           mkdir -p _site
-          cp -r index.html 404.html favicon.svg _site/ 2>/dev/null || true
+          cp -r index.html 404.html favicon.svg sitemap.xml robots.txt _site/ 2>/dev/null || true
           cp -r css js fonts img posts categories about articles blogData config _site/
 
       - name: "[Upload] 上传 Pages 产物"
