@@ -15,7 +15,7 @@ const MARKDOWN_DIR = path.join(BLOG_DATA_DIR, 'markdown');
 
 const SITE_CONFIG_PATH = path.join(CONFIG_DIR, 'siteConfig.json');
 const BUILD_CONFIG_PATH = path.join(CONFIG_DIR, 'buildConfig.json');
-const CATEGORIES_JSON_PATH = path.join(BLOG_DATA_DIR, 'categories.json');
+const TAGS_JSON_PATH = path.join(BLOG_DATA_DIR, 'tags.json');
 const ARTICLES_JSON_PATH = path.join(BLOG_DATA_DIR, 'articles.json');
 
 const SITE_NAME = 'QxBlog';
@@ -130,7 +130,7 @@ const LOAD = (f) => {
 log('Init', 'Loading configuration files...');
 const siteCfg = LOAD(SITE_CONFIG_PATH) || {};
 const buildCfg = LOAD(BUILD_CONFIG_PATH) || {};
-const categoriesData = LOAD(CATEGORIES_JSON_PATH) || [];
+const tagsData = LOAD(TAGS_JSON_PATH) || [];
 
 if (!siteCfg.site) {
     log('Warning', 'siteConfig.json is empty or invalid, using defaults');
@@ -374,7 +374,7 @@ const LOAD2 = (f) => {
 
 const siteCfg2 = LOAD2(SITE_CONFIG_PATH) || {};
 const buildCfg2 = LOAD2(BUILD_CONFIG_PATH) || {};
-const categoriesData2 = LOAD2(CATEGORIES_JSON_PATH) || [];
+const tagsData2 = LOAD2(TAGS_JSON_PATH) || [];
 const MAX_PER_PAGE3 = buildCfg2.maxArticlesPerPage || MAX_ARTICLES_PER_PAGE;
 
 const LOGO_SVG = `<polygon points="570,310 440,535 180,535 50,310 180,85 440,85" stroke="currentColor" stroke-width="18" stroke-linejoin="round"/>
@@ -426,7 +426,7 @@ async function genArticleHTML(article) {
     const articleUrl = `${SITE_URL}/posts/${article.id}.html`;
 
     const labelsHTML = (article.labels || []).map(l =>
-        `<a href="${prefix}categories/${encodeURIComponent(l)}/" class="qx-article-card-label">${l}</a>`
+        `<a href="${prefix}tags/${encodeURIComponent(l)}/" class="qx-article-card-label">${l}</a>`
     ).join('\n');
 
     const metaTags = genMetaTags({
@@ -447,6 +447,10 @@ async function genArticleHTML(article) {
         { name: article.title, url: articleUrl }
     ]);
 
+    const loaderCSS = `<style>.qx-loader{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:var(--bg-body);transition:opacity .3s,visibility .3s}.qx-loader.is-hidden{opacity:0;visibility:hidden;pointer-events:none}</style>`;
+    
+    const loaderHTML = `<div class="qx-loader"><svg class="qx-loader-geo" viewBox="0 0 620 620" fill="none" xmlns="http://www.w3.org/2000/svg"><g class="qx-loader-orbit-wrap"><ellipse class="qx-loader-orbit" cx="310" cy="310" rx="230" ry="85" stroke-width="2.5" opacity="0.22" transform="rotate(-18, 310, 310)"/></g><g class="qx-loader-orbit-wrap"><ellipse class="qx-loader-orbit" cx="310" cy="310" rx="170" ry="120" stroke-width="2.2" opacity="0.16" transform="rotate(28, 310, 310)"/></g><line class="qx-loader-radial" x1="310" y1="310" x2="570" y2="310"/><line class="qx-loader-radial" x1="310" y1="310" x2="440" y2="535"/><line class="qx-loader-radial" x1="310" y1="310" x2="180" y2="535"/><line class="qx-loader-radial" x1="310" y1="310" x2="50" y2="310"/><line class="qx-loader-radial" x1="310" y1="310" x2="180" y2="85"/><line class="qx-loader-radial" x1="310" y1="310" x2="440" y2="85"/><polygon class="qx-loader-outer" points="570,310 440,535 180,535 50,310 180,85 440,85"/><polygon class="qx-loader-inner" points="440,385 310,460 180,385 180,235 310,160 440,235"/><circle class="qx-loader-dot" cx="570" cy="310" r="5.5" style="animation-delay:0s"/><circle class="qx-loader-dot" cx="440" cy="535" r="5.5" style="animation-delay:.5s"/><circle class="qx-loader-dot" cx="180" cy="535" r="5.5" style="animation-delay:1s"/><circle class="qx-loader-dot" cx="50" cy="310" r="5.5" style="animation-delay:1.5s"/><circle class="qx-loader-dot" cx="180" cy="85" r="5.5" style="animation-delay:2s"/><circle class="qx-loader-dot" cx="440" cy="85" r="5.5" style="animation-delay:2.5s"/><circle class="qx-loader-idot" cx="440" cy="385" r="3.2"/><circle class="qx-loader-idot" cx="310" cy="460" r="3.2"/><circle class="qx-loader-idot" cx="180" cy="385" r="3.2"/><circle class="qx-loader-idot" cx="180" cy="235" r="3.2"/><circle class="qx-loader-idot" cx="310" cy="160" r="3.2"/><circle class="qx-loader-idot" cx="440" cy="235" r="3.2"/><circle class="qx-loader-core" cx="310" cy="310" r="8"/></svg></div>`;
+
     return `<!DOCTYPE html>
 <html lang="zh-CN">
 
@@ -460,7 +464,7 @@ async function genArticleHTML(article) {
     <title>${SITE_NAME2} - ${article.title}</title>
     <link rel="stylesheet" href="${prefix}css/katex.min.css">
     <link rel="stylesheet" href="${prefix}css/default.css">
-    \${LOADER_CSS}
+    ${loaderCSS}
     <script type="module" src="${prefix}js/default.js"></script>
     <script>
         (function () {
@@ -472,12 +476,14 @@ async function genArticleHTML(article) {
 </head>
 
 <body>
-    \${LOADER_HTML}
+    ${loaderHTML}
     <article class="qx-post">
         <header class="qx-post-header">
-            <a href="javascript:history.back()" class="qx-post-back">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> 返回上一页
-            </a>
+            <div class="qx-post-back-wrapper">
+                <a href="javascript:history.back()" class="qx-post-back">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> 返回上一页
+                </a>
+            </div>
             <h1 class="qx-post-title">${article.title}</h1>
             <div class="qx-post-meta">
                 <span class="qx-post-date">发布日期：${formatDate(article.date)}</span>
@@ -496,23 +502,27 @@ async function genArticleHTML(article) {
 </html>`;
 }
 
-function genCategoryHTML(label, articleCount) {
+function genTagHTML(label, articleCount) {
     const prefix = '../../';
-    const categoryUrl = `${SITE_URL}/categories/${encodeURIComponent(label)}/`;
-    const description = `${label} 分类下的所有文章，共 ${articleCount} 篇。`;
+    const tagUrl = `${SITE_URL}/tags/${encodeURIComponent(label)}/`;
+    const description = `${label} 标签下的所有文章，共 ${articleCount} 篇。`;
 
     const metaTags = genMetaTags({
         title: `${SITE_NAME2} - ${label}`,
         description,
         keywords: `${label}, ${SITE_KEYWORDS}`,
-        url: categoryUrl
+        url: tagUrl
     });
 
     const breadcrumbData = genStructuredDataBreadcrumb([
         { name: SITE_NAME, url: SITE_URL },
-        { name: '分类', url: `${SITE_URL}/categories/` },
-        { name: label, url: categoryUrl }
+        { name: '标签', url: `${SITE_URL}/tags/` },
+        { name: label, url: tagUrl }
     ]);
+
+    const loaderCSS = `<style>.qx-loader{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:var(--bg-body);transition:opacity .3s,visibility .3s}.qx-loader.is-hidden{opacity:0;visibility:hidden;pointer-events:none}</style>`;
+    
+    const loaderHTML = `<div class="qx-loader"><svg class="qx-loader-geo" viewBox="0 0 620 620" fill="none" xmlns="http://www.w3.org/2000/svg"><g class="qx-loader-orbit-wrap"><ellipse class="qx-loader-orbit" cx="310" cy="310" rx="230" ry="85" stroke-width="2.5" opacity="0.22" transform="rotate(-18, 310, 310)"/></g><g class="qx-loader-orbit-wrap"><ellipse class="qx-loader-orbit" cx="310" cy="310" rx="170" ry="120" stroke-width="2.2" opacity="0.16" transform="rotate(28, 310, 310)"/></g><line class="qx-loader-radial" x1="310" y1="310" x2="570" y2="310"/><line class="qx-loader-radial" x1="310" y1="310" x2="440" y2="535"/><line class="qx-loader-radial" x1="310" y1="310" x2="180" y2="535"/><line class="qx-loader-radial" x1="310" y1="310" x2="50" y2="310"/><line class="qx-loader-radial" x1="310" y1="310" x2="180" y2="85"/><line class="qx-loader-radial" x1="310" y1="310" x2="440" y2="85"/><polygon class="qx-loader-outer" points="570,310 440,535 180,535 50,310 180,85 440,85"/><polygon class="qx-loader-inner" points="440,385 310,460 180,385 180,235 310,160 440,235"/><circle class="qx-loader-dot" cx="570" cy="310" r="5.5" style="animation-delay:0s"/><circle class="qx-loader-dot" cx="440" cy="535" r="5.5" style="animation-delay:.5s"/><circle class="qx-loader-dot" cx="180" cy="535" r="5.5" style="animation-delay:1s"/><circle class="qx-loader-dot" cx="50" cy="310" r="5.5" style="animation-delay:1.5s"/><circle class="qx-loader-dot" cx="180" cy="85" r="5.5" style="animation-delay:2s"/><circle class="qx-loader-dot" cx="440" cy="85" r="5.5" style="animation-delay:2.5s"/><circle class="qx-loader-idot" cx="440" cy="385" r="3.2"/><circle class="qx-loader-idot" cx="310" cy="460" r="3.2"/><circle class="qx-loader-idot" cx="180" cy="385" r="3.2"/><circle class="qx-loader-idot" cx="180" cy="235" r="3.2"/><circle class="qx-loader-idot" cx="310" cy="160" r="3.2"/><circle class="qx-loader-idot" cx="440" cy="235" r="3.2"/><circle class="qx-loader-core" cx="310" cy="310" r="8"/></svg></div>`;
 
     return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -525,7 +535,7 @@ function genCategoryHTML(label, articleCount) {
     ${breadcrumbData}
     <title>${SITE_NAME2} - ${label}</title>
     <link rel="stylesheet" href="${prefix}css/default.css">
-    \${LOADER_CSS}
+    ${loaderCSS}
     <script type="module" src="${prefix}js/default.js"></script>
     <script>
         (function () {
@@ -537,16 +547,107 @@ function genCategoryHTML(label, articleCount) {
 </head>
 
 <body>
-    \${LOADER_HTML}
+    ${loaderHTML}
     <section class="qx-page-hero">
-        <span class="qx-page-hero-tag">&lt;Category /&gt;</span>
+        <div class="qx-page-hero-back-wrapper">
+            <a href="javascript:history.back()" class="qx-page-hero-back">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> 返回上一页
+            </a>
+        </div>
+        <span class="qx-page-hero-tag">&lt;Tag /&gt;</span>
         <h1 class="qx-page-hero-title">${label}</h1>
         <p class="qx-page-hero-sub">共 ${articleCount} 篇文章</p>
     </section>
 
     <section class="qx-articles">
         <div class="qx-articles-grid"></div>
-        <div class="qx-pagination" id="qxPagination" data-source="category" data-label="${label}"></div>
+        <div class="qx-pagination" id="qxPagination" data-source="tag" data-label="${label}"></div>
+    </section>
+
+</body>
+
+</html>`;
+}
+
+async function generateTagPages(tags, articles) {
+    const tagsDir = path.join(ROOT, 'tags');
+    ensureDir(tagsDir);
+    
+    for (const tag of tags) {
+        const tagDir = path.join(tagsDir, tag.label);
+        ensureDir(tagDir);
+        
+        const html = genTagHTML(tag.label, tag.count);
+        const indexPath = path.join(tagDir, 'index.html');
+        fs.writeFileSync(indexPath, html, 'utf-8');
+        log('File', `Generated tag page: ${indexPath}`);
+    }
+    
+    // 生成标签列表页（如果有的话）
+    const tagsListPath = path.join(tagsDir, 'index.html');
+    if (!fs.existsSync(tagsListPath)) {
+        const tagsListHTML = genTagsListPage(tags);
+        fs.writeFileSync(tagsListPath, tagsListHTML, 'utf-8');
+        log('File', `Generated tags list page: ${tagsListPath}`);
+    }
+    
+    log('Info', `Generated ${tags.length} tag pages`);
+}
+
+function genTagsListPage(tags) {
+    const tagsHTML = tags.map(c => `
+        <a href="${c.label}/" class="qx-tag-item">
+            <span class="qx-tag-name">${c.label}</span>
+            <span class="qx-tag-count">${c.count} 篇</span>
+        </a>
+    `).join('');
+    
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="view-transition" content="same-origin">
+    <title>${SITE_NAME2} - 标签</title>
+    <link rel="stylesheet" href="../css/default.css">
+    <style>.qx-loader{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:var(--bg-body);transition:opacity .3s,visibility .3s}.qx-loader.is-hidden{opacity:0;visibility:hidden;pointer-events:none}</style>
+    <script type="module" src="../js/default.js"></script>
+    <script>
+        (function () {
+            var t = localStorage.getItem('qx-theme');
+            if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+</head>
+
+<body>
+    <div class="qx-loader">
+        <svg class="qx-loader-geo" viewBox="0 0 620 620" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g class="qx-loader-orbit-wrap"><ellipse class="qx-loader-orbit" cx="310" cy="310" rx="230" ry="85" stroke-width="2.5" opacity="0.22" transform="rotate(-18, 310, 310)"/></g>
+            <g class="qx-loader-orbit-wrap"><ellipse class="qx-loader-orbit" cx="310" cy="310" rx="170" ry="120" stroke-width="2.2" opacity="0.16" transform="rotate(28, 310, 310)"/></g>
+            <line class="qx-loader-radial" x1="310" y1="310" x2="570" y2="310"/><line class="qx-loader-radial" x1="310" y1="310" x2="440" y2="535"/><line class="qx-loader-radial" x1="310" y1="310" x2="180" y2="535"/><line class="qx-loader-radial" x1="310" y1="310" x2="50" y2="310"/><line class="qx-loader-radial" x1="310" y1="310" x2="180" y2="85"/><line class="qx-loader-radial" x1="310" y1="310" x2="440" y2="85"/>
+            <polygon class="qx-loader-outer" points="570,310 440,535 180,535 50,310 180,85 440,85"/>
+            <polygon class="qx-loader-inner" points="440,385 310,460 180,385 180,235 310,160 440,235"/>
+            <circle class="qx-loader-dot" cx="570" cy="310" r="5.5" style="animation-delay:0s"/><circle class="qx-loader-dot" cx="440" cy="535" r="5.5" style="animation-delay:.5s"/><circle class="qx-loader-dot" cx="180" cy="535" r="5.5" style="animation-delay:1s"/><circle class="qx-loader-dot" cx="50" cy="310" r="5.5" style="animation-delay:1.5s"/><circle class="qx-loader-dot" cx="180" cy="85" r="5.5" style="animation-delay:2s"/><circle class="qx-loader-dot" cx="440" cy="85" r="5.5" style="animation-delay:2.5s"/>
+            <circle class="qx-loader-idot" cx="440" cy="385" r="3.2"/><circle class="qx-loader-idot" cx="310" cy="460" r="3.2"/><circle class="qx-loader-idot" cx="180" cy="385" r="3.2"/><circle class="qx-loader-idot" cx="180" cy="235" r="3.2"/><circle class="qx-loader-idot" cx="310" cy="160" r="3.2"/><circle class="qx-loader-idot" cx="440" cy="235" r="3.2"/>
+            <circle class="qx-loader-core" cx="310" cy="310" r="8"/>
+        </svg>
+    </div>
+    <section class="qx-page-hero">
+        <div class="qx-page-hero-back-wrapper">
+            <a href="javascript:history.back()" class="qx-page-hero-back">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> 返回上一页
+            </a>
+        </div>
+        <span class="qx-page-hero-tag">&lt;Tags /&gt;</span>
+        <h1 class="qx-page-hero-title">标签</h1>
+        <p class="qx-page-hero-sub">共 ${tags.length} 个标签</p>
+    </section>
+
+    <section class="qx-tags">
+        <div class="qx-tags-list">${tagsHTML}</div>
     </section>
 
 </body>
@@ -557,7 +658,7 @@ function genCategoryHTML(label, articleCount) {
 function cleanupLegacyPaginationData() {
     const legacyDirs = [
         path.join(BLOG_DATA_DIR, 'articles'),
-        path.join(BLOG_DATA_DIR, 'categories'),
+        path.join(BLOG_DATA_DIR, 'tags'),
     ];
     legacyDirs.forEach(dir => {
         if (fs.existsSync(dir)) {
@@ -567,12 +668,12 @@ function cleanupLegacyPaginationData() {
     });
 }
 
-function genCategoriesJSON(allLabels, articles) {
-    const categories = allLabels.map(label => ({
+function genTagsJSON(allLabels, articles) {
+    const tags = allLabels.map(label => ({
         label,
         count: articles.filter(a => (a.labels || []).includes(label)).length,
     }));
-    return categories;
+    return tags;
 }
 
 function loadConfig() {
@@ -919,7 +1020,7 @@ async function buildSingleArticle(options) {
     const plainText = stripHtml(articleBodyHTML).substring(0, 160);
     const articleUrl = `${SITE_URL}/posts/${id}.html`;
     const labelsHTML = labels.map(l =>
-        `<a href="../categories/${encodeURIComponent(l)}/" class="qx-article-card-label">${l}</a>`
+        `<a href="../tags/${encodeURIComponent(l)}/" class="qx-article-card-label">${l}</a>`
     ).join('\n');
 
     const metaTags = genMetaTags({
@@ -979,9 +1080,11 @@ async function buildSingleArticle(options) {
     </div>
     <article class="qx-post">
         <header class="qx-post-header">
-            <a href="javascript:history.back()" class="qx-post-back">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> 返回上一页
-            </a>
+            <div class="qx-post-back-wrapper">
+                <a href="javascript:history.back()" class="qx-post-back">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> 返回上一页
+                </a>
+            </div>
             <h1 class="qx-post-title">${title}</h1>
             <div class="qx-post-meta">
                 <span class="qx-post-date">发布日期：${formatDate(date)}</span>
@@ -1025,14 +1128,14 @@ function updateArticlesJSON(newArticle) {
     return articles;
 }
 
-function updateCategoriesJSON(articles) {
+function updateTagsJSON(articles) {
     const allLabels = [...new Set(articles.flatMap(a => a.labels || []))];
-    const categories = allLabels.map(label => ({
+    const tags = allLabels.map(label => ({
         label,
         count: articles.filter(a => (a.labels || []).includes(label)).length,
     }));
-    saveJSON(CATEGORIES_JSON_PATH, categories);
-    return categories;
+    saveJSON(TAGS_JSON_PATH, tags);
+    return tags;
 }
 
 async function removeArticle(articleId, { keepMarkdown = false } = {}) {
@@ -1074,14 +1177,14 @@ async function removeArticle(articleId, { keepMarkdown = false } = {}) {
         log('Warning', `Article #${articleId} not found in articles.json`);
     }
 
-    const categories = updateCategoriesJSON(articles);
-    generateSitemap(articles, categories);
+    const tags = updateTagsJSON(articles);
+    generateSitemap(articles, tags);
     generateRobotsTxt();
 
     const doneLabel = keepMarkdown ? 'closed' : 'deleted';
     log('Complete', `Article #${articleId} ${doneLabel} successfully`, {
         totalArticles: articles.length,
-        totalCategories: categories.length,
+        totalTags: tags.length,
     });
 }
 
@@ -1364,23 +1467,26 @@ async function buildFromGitHubIssues() {
         saveJSON(ARTICLES_JSON_PATH, articles);
         
         const allLabels = [...new Set(articles.flatMap(a => a.labels || []))];
-        const categories = genCategoriesJSON(allLabels, articles);
-        saveJSON(CATEGORIES_JSON_PATH, categories);
+        const tags = genTagsJSON(allLabels, articles);
+        saveJSON(TAGS_JSON_PATH, tags);
         
-        log('Data', 'Categories generated', { categories });
+        log('Data', 'Tags generated', { tags });
         
         cleanupLegacyPaginationData();
         
-        generateSitemap(articles, categories);
+        generateSitemap(articles, tags);
         generateRobotsTxt();
+        
+        // 生成标签详情页
+        await generateTagPages(tags, articles);
         
         log('Complete', `Build complete! (${buildMode} mode)`, {
             mode: buildMode,
             totalArticles: articles.length,
-            totalCategories: categories.length,
+            totalTags: tags.length,
             outputFiles: {
                 articles: ARTICLES_JSON_PATH,
-                categories: CATEGORIES_JSON_PATH,
+                tags: TAGS_JSON_PATH,
                 posts: POSTS_DIR,
                 markdown: path.join(BLOG_DATA_DIR, 'markdown')
             }
@@ -1413,20 +1519,23 @@ async function buildFromLocalMarkdown(fileId) {
     }
 
     const articles = updateArticlesJSON(article);
-    const categories = updateCategoriesJSON(articles);
+    const tags = updateTagsJSON(articles);
 
-    generateSitemap(articles, categories);
+    generateSitemap(articles, tags);
     generateRobotsTxt();
+    
+    // 生成标签详情页
+    await generateTagPages(tags, articles);
 
     log('Complete', 'Build complete!', {
         articleId: article.id,
         articleTitle: article.title,
         totalArticles: articles.length,
-        totalCategories: categories.length,
+        totalTags: tags.length,
         outputFiles: {
             post: path.join(POSTS_DIR, `${article.id}.html`),
             articles: ARTICLES_JSON_PATH,
-            categories: CATEGORIES_JSON_PATH,
+            tags: TAGS_JSON_PATH,
         }
     });
 }
@@ -1462,18 +1571,21 @@ async function buildAllLocalArticles() {
     }
     
     const updatedArticles = updateArticlesJSONFromArray(articles);
-    const categories = updateCategoriesJSON(updatedArticles);
+    const tags = updateTagsJSON(updatedArticles);
     
-    generateSitemap(updatedArticles, categories);
+    generateSitemap(updatedArticles, tags);
     generateRobotsTxt();
+    
+    // 生成标签详情页
+    await generateTagPages(tags, updatedArticles);
     
     log('Complete', 'Build complete!', {
         totalArticles: updatedArticles.length,
-        totalCategories: categories.length,
+        totalTags: tags.length,
         outputFiles: {
             posts: POSTS_DIR,
             articles: ARTICLES_JSON_PATH,
-            categories: CATEGORIES_JSON_PATH,
+            tags: TAGS_JSON_PATH,
         }
     });
 }
@@ -1500,7 +1612,7 @@ function updateArticlesJSONFromArray(newArticles) {
     return articles;
 }
 
-function generateSitemap(articles, categories) {
+function generateSitemap(articles, tags) {
     const sitemapPath = path.join(ROOT, 'sitemap.xml');
     const now = new Date().toISOString();
     
@@ -1521,7 +1633,7 @@ function generateSitemap(articles, categories) {
     });
     
     urls.push({
-        loc: `${SITE_URL}/categories/`,
+        loc: `${SITE_URL}/tags/`,
         lastmod: now,
         changefreq: 'weekly',
         priority: '0.8'
@@ -1545,10 +1657,10 @@ function generateSitemap(articles, categories) {
         }
     }
     
-    if (Array.isArray(categories)) {
-        for (const category of categories) {
+    if (Array.isArray(tags)) {
+        for (const tag of tags) {
             urls.push({
-                loc: `${SITE_URL}/categories/${encodeURIComponent(category.label)}/`,
+                loc: `${SITE_URL}/tags/${encodeURIComponent(tag.label)}/`,
                 lastmod: now,
                 changefreq: 'weekly',
                 priority: '0.6'
