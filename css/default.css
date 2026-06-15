@@ -602,6 +602,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 20px;
+    padding: 0 1rem;
 }
 
 .qx-hero-tag {
@@ -1217,6 +1218,24 @@ body {
     opacity: .6;
 }
 
+.qx-category-label {
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.qx-post-labels .qx-category-label {
+    font-weight: 700;
+}
+
+.qx-post-labels .qx-article-card-label {
+    font-size: .85rem;
+    opacity: .6;
+}
+
+.qx-post-labels .qx-article-card-label:hover {
+    opacity: 1;
+}
+
 /* ========== Pagination ========== */
 
 .qx-pagination {
@@ -1451,6 +1470,101 @@ body {
     font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
     font-size: .75rem;
     opacity: .5;
+}
+
+.qx-categories-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+/* ========== Archive ========== */
+
+.qx-archive {
+    max-width: 72ch;
+    margin: 0 auto;
+    padding: 48px 24px 120px;
+}
+
+.qx-archive-list {
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+}
+
+.qx-archive-year {
+    position: relative;
+}
+
+.qx-archive-year-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-body);
+    margin: 0 0 24px 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--text-body);
+    opacity: .25;
+    letter-spacing: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.qx-archive-year-count {
+    font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
+    font-size: .8rem;
+    font-weight: 500;
+    opacity: .6;
+}
+
+.qx-archive-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.qx-archive-item {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding: 4px 0;
+}
+
+.qx-archive-date {
+    font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
+    font-size: .8rem;
+    color: var(--text-body);
+    opacity: .4;
+    flex-shrink: 0;
+    min-width: 52px;
+}
+
+.qx-archive-link {
+    color: var(--text-body);
+    text-decoration: none;
+    font-size: clamp(.95rem, 1.3vw, 1.05rem);
+    font-weight: 500;
+    line-height: 1.6;
+    transition: opacity .2s;
+    letter-spacing: 0;
+}
+
+.qx-archive-link:hover {
+    opacity: .6;
+}
+
+.qx-archive-tags {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+}
+
+.qx-archive-tags .qx-article-card-label {
+    font-size: .65rem;
+    opacity: .4;
 }
 
 /* ========== About ========== */

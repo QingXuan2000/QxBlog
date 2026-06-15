@@ -6,6 +6,7 @@ export class QxSearch {
         this.form = document.querySelector('.qx-nav-search');
         this.input = document.querySelector('.qx-nav-search-input');
         this.articles = null;
+        this.bodyCache = new Map();
         this.dropdown = null;
         this.selectedIdx = -1;
         this._createDropdown();
@@ -16,10 +17,11 @@ export class QxSearch {
         if (this.articles) return;
         try {
             const res = await fetch(DATA_URL);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
             const index = await res.json();
             this.articles = Object.values(index);
         } catch (_) {
-            this.articles = [];
+            this.articles = null;
         }
     }
 
@@ -52,6 +54,11 @@ export class QxSearch {
         }
         this._setLoading(true);
         await this._loadIndex();
+        if (!this.articles) {
+            this.dropdown.innerHTML = '<div class="qx-search-empty">搜索索引加载失败，请稍后重试</div>';
+            this.dropdown.classList.add('is-visible');
+            return;
+        }
         const results = [];
         for (const a of this.articles) {
             const titleMatch = a.title.toLowerCase().includes(q);
@@ -59,12 +66,21 @@ export class QxSearch {
             let bodyMatch = false;
             let bodyText = '';
             if (a.markdownPath) {
-                try {
-                    const mdRes = await fetch(new URL('../' + a.markdownPath, import.meta.url).href);
-                    bodyText = await mdRes.text();
-                    bodyText = this._stripFrontmatter(bodyText);
+                if (this.bodyCache.has(a.markdownPath)) {
+                    bodyText = this.bodyCache.get(a.markdownPath);
+                } else {
+                    try {
+                        const mdRes = await fetch(new URL('../' + a.markdownPath, import.meta.url).href);
+                        if (mdRes.ok) {
+                            bodyText = await mdRes.text();
+                            bodyText = this._stripFrontmatter(bodyText);
+                            this.bodyCache.set(a.markdownPath, bodyText);
+                        }
+                    } catch (_) {}
+                }
+                if (bodyText) {
                     bodyMatch = bodyText.toLowerCase().includes(q);
-                } catch (_) {}
+                }
             }
             if (titleMatch || labelMatch || bodyMatch) {
                 results.push({ ...a, bodyText });

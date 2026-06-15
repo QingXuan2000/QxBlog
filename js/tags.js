@@ -15,7 +15,8 @@ export class QxTags {
 
     _render(tags) {
         this.container.innerHTML = tags.map(tag => {
-            const href = new URL(`tags/${encodeURIComponent(tag.label)}/`, ROOT).pathname;
+            const slug = tag.slug || encodeURIComponent(tag.label);
+            const href = new URL(`tags/${slug}/`, ROOT).pathname;
             return `<a href="${href}" class="qx-tag-item">
                 <span class="qx-tag-name">${tag.label}</span>
                 <span class="qx-tag-count">${tag.count}</span>

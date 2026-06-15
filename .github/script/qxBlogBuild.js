@@ -16,6 +16,7 @@ const MARKDOWN_DIR = path.join(BLOG_DATA_DIR, 'markdown');
 const SITE_CONFIG_PATH = path.join(CONFIG_DIR, 'siteConfig.json');
 const BUILD_CONFIG_PATH = path.join(CONFIG_DIR, 'buildConfig.json');
 const TAGS_JSON_PATH = path.join(BLOG_DATA_DIR, 'tags.json');
+const CATEGORIES_JSON_PATH = path.join(BLOG_DATA_DIR, 'categories.json');
 const ARTICLES_JSON_PATH = path.join(BLOG_DATA_DIR, 'articles.json');
 
 const SITE_NAME = 'QxBlog';
@@ -142,8 +143,8 @@ if (!buildCfg.author) {
 const GITHUB_START_ID = Number(buildCfg.githubStartId ?? buildCfg.githubStartPageNumber ?? 1) || 1;
 const ALLOWED_BUILD_AUTHOR = (buildCfg.author || '').trim();
 
-function issueNumberToArticleId(issueNumber) {
-    return issueNumber + (GITHUB_START_ID - 1);
+function discussionNumberToArticleId(discussionNumber) {
+    return discussionNumber + (GITHUB_START_ID - 1);
 }
 
 function isBuildAuthorAllowed(authorLogin) {
@@ -163,7 +164,7 @@ log('Config', 'Configuration loaded', {
 const MAX_PER_PAGE = buildCfg.maxArticlesPerPage || MAX_ARTICLES_PER_PAGE;
 
 const SITE_URL = siteCfg.site?.url || 'https://example.com';
-const SITE_DESCRIPTION = siteCfg.site?.description || '基于 Issues 驱动的静态博客，分享代码、设计与思考。';
+const SITE_DESCRIPTION = siteCfg.site?.description || '基于 Discussions 驱动的静态博客，分享代码、设计与思考。';
 const SITE_KEYWORDS = siteCfg.site?.keywords || '博客,技术,前端,代码,设计';
 const SITE_AUTHOR = siteCfg.site?.author || 'Anonymous';
 const SITE_CREATED_AT = siteCfg.site?.siteCreatedAt || new Date().toISOString();
@@ -425,9 +426,12 @@ async function genArticleHTML(article) {
     const plainText = stripHtml(bodyHTML).substring(0, 160);
     const articleUrl = `${SITE_URL}/posts/${article.id}.html`;
 
-    const labelsHTML = (article.labels || []).map(l =>
-        `<a href="${prefix}tags/${encodeURIComponent(l)}/" class="qx-article-card-label">${l}</a>`
-    ).join('\n');
+    const labelsHTML = (article.labels || []).map((l, i) => {
+        const slug = (article.labelSlugs && article.labelSlugs[i]) || genSlug(l);
+        return `<a href="${prefix}tags/${slug}/" class="qx-article-card-label">${l}</a>`;
+    }).join('\n');
+
+    const categoryHTML = article.category ? `<a href="${prefix}categories/${article.categorySlug || genSlug(article.category)}/" class="qx-article-card-label qx-category-label">${article.category}</a>` : '';
 
     const metaTags = genMetaTags({
         title: `${SITE_NAME2} - ${article.title}`,
@@ -489,7 +493,7 @@ async function genArticleHTML(article) {
                 <span class="qx-post-date">发布日期：${formatDate(article.date)}</span>
                 <span class="qx-post-author">${article.author}</span>
             </div>
-            <div class="qx-post-labels">${labelsHTML}</div>
+            <div class="qx-post-labels">${categoryHTML}${labelsHTML}</div>
         </header>
         <div class="qx-post-body">${bodyHTML}</div>
         <footer class="qx-post-footer">
@@ -502,10 +506,11 @@ async function genArticleHTML(article) {
 </html>`;
 }
 
-function genTagHTML(label, articleCount) {
+function genTagHTML(tag) {
+    const { label, slug, count } = tag;
     const prefix = '../../';
-    const tagUrl = `${SITE_URL}/tags/${encodeURIComponent(label)}/`;
-    const description = `${label} 标签下的所有文章，共 ${articleCount} 篇。`;
+    const tagUrl = `${SITE_URL}/tags/${slug}/`;
+    const description = `${label} 标签下的所有文章，共 ${count} 篇。`;
 
     const metaTags = genMetaTags({
         title: `${SITE_NAME2} - ${label}`,
@@ -556,12 +561,12 @@ function genTagHTML(label, articleCount) {
         </div>
         <span class="qx-page-hero-tag">&lt;Tag /&gt;</span>
         <h1 class="qx-page-hero-title">${label}</h1>
-        <p class="qx-page-hero-sub">共 ${articleCount} 篇文章</p>
+        <p class="qx-page-hero-sub">共 ${count} 篇文章</p>
     </section>
 
     <section class="qx-articles">
         <div class="qx-articles-grid"></div>
-        <div class="qx-pagination" id="qxPagination" data-source="tag" data-label="${label}"></div>
+        <div class="qx-pagination" id="qxPagination" data-source="tag" data-label="${slug}"></div>
     </section>
 
 </body>
@@ -572,17 +577,17 @@ function genTagHTML(label, articleCount) {
 async function generateTagPages(tags, articles) {
     const tagsDir = path.join(ROOT, 'tags');
     ensureDir(tagsDir);
-    
+
     for (const tag of tags) {
-        const tagDir = path.join(tagsDir, tag.label);
+        const tagDir = path.join(tagsDir, tag.slug);
         ensureDir(tagDir);
-        
-        const html = genTagHTML(tag.label, tag.count);
+
+        const html = genTagHTML(tag);
         const indexPath = path.join(tagDir, 'index.html');
         fs.writeFileSync(indexPath, html, 'utf-8');
         log('File', `Generated tag page: ${indexPath}`);
     }
-    
+
     // 生成标签列表页（如果有的话）
     const tagsListPath = path.join(tagsDir, 'index.html');
     if (!fs.existsSync(tagsListPath)) {
@@ -590,13 +595,13 @@ async function generateTagPages(tags, articles) {
         fs.writeFileSync(tagsListPath, tagsListHTML, 'utf-8');
         log('File', `Generated tags list page: ${tagsListPath}`);
     }
-    
+
     log('Info', `Generated ${tags.length} tag pages`);
 }
 
 function genTagsListPage(tags) {
     const tagsHTML = tags.map(c => `
-        <a href="${c.label}/" class="qx-tag-item">
+        <a href="${c.slug}/" class="qx-tag-item">
             <span class="qx-tag-name">${c.label}</span>
             <span class="qx-tag-count">${c.count} 篇</span>
         </a>
@@ -655,6 +660,178 @@ function genTagsListPage(tags) {
 </html>`;
 }
 
+function updateCategoriesJSON(articles) {
+    const categoryMap = {};
+    for (const article of articles) {
+        const name = article.category;
+        if (!name) continue;
+        const slug = article.categorySlug || genSlug(name);
+        if (!categoryMap[name]) {
+            categoryMap[name] = { name, slug, count: 0 };
+        } else {
+            // 使用最新 slug（如果有）
+            if (article.categorySlug) categoryMap[name].slug = article.categorySlug;
+        }
+        categoryMap[name].count += 1;
+    }
+    const categories = Object.values(categoryMap);
+    saveJSON(CATEGORIES_JSON_PATH, categories);
+    return categories;
+}
+
+function genCategoryHTML(category) {
+    const { name, slug, count } = category;
+    const prefix = '../../';
+    const categoryUrl = `${SITE_URL}/categories/${slug}/`;
+    const description = `${name} 分类下的所有文章，共 ${count} 篇。`;
+
+    const metaTags = genMetaTags({
+        title: `${SITE_NAME2} - ${name}`,
+        description,
+        keywords: `${name}, ${SITE_KEYWORDS}`,
+        url: categoryUrl
+    });
+
+    const breadcrumbData = genStructuredDataBreadcrumb([
+        { name: SITE_NAME, url: SITE_URL },
+        { name: '分类', url: `${SITE_URL}/categories/` },
+        { name: name, url: categoryUrl }
+    ]);
+
+    const loaderCSS = `<style>.qx-loader{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:var(--bg-body);transition:opacity .3s,visibility .3s}.qx-loader.is-hidden{opacity:0;visibility:hidden;pointer-events:none}</style>`;
+
+    const loaderHTML = `<div class="qx-loader"><svg class="qx-loader-geo" viewBox="0 0 620 620" fill="none" xmlns="http://www.w3.org/2000/svg"><g class="qx-loader-orbit-wrap"><ellipse class="qx-loader-orbit" cx="310" cy="310" rx="230" ry="85" stroke-width="2.5" opacity="0.22" transform="rotate(-18, 310, 310)"/></g><g class="qx-loader-orbit-wrap"><ellipse class="qx-loader-orbit" cx="310" cy="310" rx="170" ry="120" stroke-width="2.2" opacity="0.16" transform="rotate(28, 310, 310)"/></g><line class="qx-loader-radial" x1="310" y1="310" x2="570" y2="310"/><line class="qx-loader-radial" x1="310" y1="310" x2="440" y2="535"/><line class="qx-loader-radial" x1="310" y1="310" x2="180" y2="535"/><line class="qx-loader-radial" x1="310" y1="310" x2="50" y2="310"/><line class="qx-loader-radial" x1="310" y1="310" x2="180" y2="85"/><line class="qx-loader-radial" x1="310" y1="310" x2="440" y2="85"/><polygon class="qx-loader-outer" points="570,310 440,535 180,535 50,310 180,85 440,85"/><polygon class="qx-loader-inner" points="440,385 310,460 180,385 180,235 310,160 440,235"/><circle class="qx-loader-dot" cx="570" cy="310" r="5.5" style="animation-delay:0s"/><circle class="qx-loader-dot" cx="440" cy="535" r="5.5" style="animation-delay:.5s"/><circle class="qx-loader-dot" cx="180" cy="535" r="5.5" style="animation-delay:1s"/><circle class="qx-loader-dot" cx="50" cy="310" r="5.5" style="animation-delay:1.5s"/><circle class="qx-loader-dot" cx="180" cy="85" r="5.5" style="animation-delay:2s"/><circle class="qx-loader-dot" cx="440" cy="85" r="5.5" style="animation-delay:2.5s"/><circle class="qx-loader-idot" cx="440" cy="385" r="3.2"/><circle class="qx-loader-idot" cx="310" cy="460" r="3.2"/><circle class="qx-loader-idot" cx="180" cy="385" r="3.2"/><circle class="qx-loader-idot" cx="180" cy="235" r="3.2"/><circle class="qx-loader-idot" cx="310" cy="160" r="3.2"/><circle class="qx-loader-idot" cx="440" cy="235" r="3.2"/><circle class="qx-loader-core" cx="310" cy="310" r="8"/></svg></div>`;
+
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="view-transition" content="same-origin">
+    ${metaTags}
+    ${breadcrumbData}
+    <title>${SITE_NAME2} - ${name}</title>
+    <link rel="stylesheet" href="${prefix}css/default.css">
+    ${loaderCSS}
+    <script type="module" src="${prefix}js/default.js"></script>
+    <script>
+        (function () {
+            var t = localStorage.getItem('qx-theme');
+            if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+</head>
+
+<body>
+    ${loaderHTML}
+    <section class="qx-page-hero">
+        <div class="qx-page-hero-back-wrapper">
+            <a href="javascript:history.back()" class="qx-page-hero-back">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> 返回上一页
+            </a>
+        </div>
+        <span class="qx-page-hero-tag">&lt;Category /&gt;</span>
+        <h1 class="qx-page-hero-title">${name}</h1>
+        <p class="qx-page-hero-sub">共 ${count} 篇文章</p>
+    </section>
+
+    <section class="qx-articles">
+        <div class="qx-articles-grid"></div>
+        <div class="qx-pagination" id="qxPagination" data-source="category" data-category="${slug}"></div>
+    </section>
+
+</body>
+
+</html>`;
+}
+
+async function generateCategoryPages(categories, articles) {
+    const categoriesDir = path.join(ROOT, 'categories');
+    ensureDir(categoriesDir);
+
+    for (const category of categories) {
+        const categoryDir = path.join(categoriesDir, category.slug);
+        ensureDir(categoryDir);
+
+        const html = genCategoryHTML(category);
+        const indexPath = path.join(categoryDir, 'index.html');
+        fs.writeFileSync(indexPath, html, 'utf-8');
+        log('File', `Generated category page: ${indexPath}`);
+    }
+
+    const listPath = path.join(categoriesDir, 'index.html');
+    if (!fs.existsSync(listPath)) {
+        const listHTML = genCategoryListPage(categories);
+        fs.writeFileSync(listPath, listHTML, 'utf-8');
+        log('File', `Generated categories list page: ${listPath}`);
+    }
+
+    log('Info', `Generated ${categories.length} category pages`);
+}
+
+function genCategoryListPage(categories) {
+    const categoriesHTML = categories.map(c => `
+        <a href="${c.slug}/" class="qx-tag-item">
+            <span class="qx-tag-name">${c.name}</span>
+            <span class="qx-tag-count">${c.count} 篇</span>
+        </a>
+    `).join('');
+
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="view-transition" content="same-origin">
+    <title>${SITE_NAME2} - 分类</title>
+    <link rel="stylesheet" href="../css/default.css">
+    <style>.qx-loader{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:var(--bg-body);transition:opacity .3s,visibility .3s}.qx-loader.is-hidden{opacity:0;visibility:hidden;pointer-events:none}</style>
+    <script type="module" src="../js/default.js"></script>
+    <script>
+        (function () {
+            var t = localStorage.getItem('qx-theme');
+            if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+</head>
+
+<body>
+    <div class="qx-loader">
+        <svg class="qx-loader-geo" viewBox="0 0 620 620" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g class="qx-loader-orbit-wrap"><ellipse class="qx-loader-orbit" cx="310" cy="310" rx="230" ry="85" stroke-width="2.5" opacity="0.22" transform="rotate(-18, 310, 310)"/></g>
+            <g class="qx-loader-orbit-wrap"><ellipse class="qx-loader-orbit" cx="310" cy="310" rx="170" ry="120" stroke-width="2.2" opacity="0.16" transform="rotate(28, 310, 310)"/></g>
+            <line class="qx-loader-radial" x1="310" y1="310" x2="570" y2="310"/><line class="qx-loader-radial" x1="310" y1="310" x2="440" y2="535"/><line class="qx-loader-radial" x1="310" y1="310" x2="180" y2="535"/><line class="qx-loader-radial" x1="310" y1="310" x2="50" y2="310"/><line class="qx-loader-radial" x1="310" y1="310" x2="180" y2="85"/><line class="qx-loader-radial" x1="310" y1="310" x2="440" y2="85"/>
+            <polygon class="qx-loader-outer" points="570,310 440,535 180,535 50,310 180,85 440,85"/>
+            <polygon class="qx-loader-inner" points="440,385 310,460 180,385 180,235 310,160 440,235"/>
+            <circle class="qx-loader-dot" cx="570" cy="310" r="5.5" style="animation-delay:0s"/><circle class="qx-loader-dot" cx="440" cy="535" r="5.5" style="animation-delay:.5s"/><circle class="qx-loader-dot" cx="180" cy="535" r="5.5" style="animation-delay:1s"/><circle class="qx-loader-dot" cx="50" cy="310" r="5.5" style="animation-delay:1.5s"/><circle class="qx-loader-dot" cx="180" cy="85" r="5.5" style="animation-delay:2s"/><circle class="qx-loader-dot" cx="440" cy="85" r="5.5" style="animation-delay:2.5s"/>
+            <circle class="qx-loader-idot" cx="440" cy="385" r="3.2"/><circle class="qx-loader-idot" cx="310" cy="460" r="3.2"/><circle class="qx-loader-idot" cx="180" cy="385" r="3.2"/><circle class="qx-loader-idot" cx="180" cy="235" r="3.2"/><circle class="qx-loader-idot" cx="310" cy="160" r="3.2"/><circle class="qx-loader-idot" cx="440" cy="235" r="3.2"/>
+            <circle class="qx-loader-core" cx="310" cy="310" r="8"/>
+        </svg>
+    </div>
+    <section class="qx-page-hero">
+        <div class="qx-page-hero-back-wrapper">
+            <a href="javascript:history.back()" class="qx-page-hero-back">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> 返回上一页
+            </a>
+        </div>
+        <span class="qx-page-hero-tag">&lt;Categories /&gt;</span>
+        <h1 class="qx-page-hero-title">分类</h1>
+        <p class="qx-page-hero-sub">共 ${categories.length} 个分类</p>
+    </section>
+
+    <section class="qx-tags">
+        <div class="qx-tags-list">${categoriesHTML}</div>
+    </section>
+
+</body>
+
+</html>`;
+}
+
 function cleanupLegacyPaginationData() {
     const legacyDirs = [
         path.join(BLOG_DATA_DIR, 'articles'),
@@ -669,10 +846,21 @@ function cleanupLegacyPaginationData() {
 }
 
 function genTagsJSON(allLabels, articles) {
-    const tags = allLabels.map(label => ({
-        label,
-        count: articles.filter(a => (a.labels || []).includes(label)).length,
-    }));
+    const labelSlugMap = {};
+    for (const article of articles) {
+        const articleLabels = article.labels || [];
+        const articleSlugs = article.labelSlugs || [];
+        for (let i = 0; i < articleLabels.length; i++) {
+            const label = articleLabels[i];
+            if (!labelSlugMap[label] && articleSlugs[i]) {
+                labelSlugMap[label] = articleSlugs[i];
+            }
+        }
+    }
+    const tags = allLabels.map(label => {
+        const slug = labelSlugMap[label] || genSlug(label);
+        return { label, slug, count: articles.filter(a => (a.labels || []).includes(label)).length };
+    });
     return tags;
 }
 
@@ -948,7 +1136,8 @@ function parseFrontmatter(content) {
 
 async function buildSingleArticle(options) {
     let id, title, author, date, updated, labels, body, markdownPath;
-    
+    let category, categorySlug, labelSlugs;
+
     if (typeof options === 'number' || typeof options === 'string') {
         // 从文件构建
         const fileId = options;
@@ -975,7 +1164,10 @@ async function buildSingleArticle(options) {
             date: data['date'],
             tags: data['tags'],
             author: data['author'],
-            id: data['id']
+            id: data['id'],
+            category: data['category'],
+            categorySlug: data['categorySlug'],
+            tagSlugs: data['tagSlugs']
         });
 
         id = parseInt(data['id']) || parseInt(fileId) || 0;
@@ -984,6 +1176,9 @@ async function buildSingleArticle(options) {
         updated = data['updated'] || date;
         author = data['author'] || siteCfg.site?.author || 'Anonymous';
         labels = Array.isArray(data['tags']) ? data['tags'] : (data['tags'] ? data['tags'].split(',').map(l => l.trim()).filter(Boolean) : []);
+        labelSlugs = Array.isArray(data['tagSlugs']) ? data['tagSlugs'] : labels.map(l => genSlug(l));
+        category = data['category'] || '';
+        categorySlug = data['categorySlug'] || '';
         body = parsedBody;
         markdownPath = `blogData/markdown/${filename}`;
     } else if (typeof options === 'object') {
@@ -994,11 +1189,26 @@ async function buildSingleArticle(options) {
         date = options.date || new Date().toISOString();
         updated = options.updated || date;
         labels = options.labels || [];
+        labelSlugs = options.labelSlugs || labels.map(l => genSlug(l));
+        category = options.category || '';
+        categorySlug = options.categorySlug || '';
         body = options.body || '';
         markdownPath = options.markdownPath || `blogData/markdown/${id}.md`;
     } else {
         log('Error', 'Invalid options for buildSingleArticle');
         return false;
+    }
+
+    // 处理 category / categorySlug 互补
+    if (category && !categorySlug) {
+        categorySlug = genSlug(category);
+    } else if (categorySlug && !category) {
+        category = categorySlug;
+    }
+
+    // 保证 labelSlugs 与 labels 长度一致
+    if (!labelSlugs || labelSlugs.length !== labels.length) {
+        labelSlugs = labels.map(l => genSlug(l));
     }
 
     const slug = genSlug(title);
@@ -1011,6 +1221,9 @@ async function buildSingleArticle(options) {
         date,
         updated,
         labels,
+        labelSlugs,
+        category,
+        categorySlug,
         markdownPath,
     };
 
@@ -1019,9 +1232,12 @@ async function buildSingleArticle(options) {
     const articleBodyHTML = await renderMarkdown(body);
     const plainText = stripHtml(articleBodyHTML).substring(0, 160);
     const articleUrl = `${SITE_URL}/posts/${id}.html`;
-    const labelsHTML = labels.map(l =>
-        `<a href="../tags/${encodeURIComponent(l)}/" class="qx-article-card-label">${l}</a>`
-    ).join('\n');
+    const labelsHTML = labels.map((l, i) => {
+        const slug = (labelSlugs && labelSlugs[i]) || genSlug(l);
+        return `<a href="../tags/${slug}/" class="qx-article-card-label">${l}</a>`;
+    }).join('\n');
+
+    const categoryHTML = category ? `<a href="../categories/${categorySlug}/" class="qx-article-card-label qx-category-label">${category}</a>` : '';
 
     const metaTags = genMetaTags({
         title: `${SITE_NAME} - ${title}`,
@@ -1090,7 +1306,7 @@ async function buildSingleArticle(options) {
                 <span class="qx-post-date">发布日期：${formatDate(date)}</span>
                 <span class="qx-post-author">${author}</span>
             </div>
-            <div class="qx-post-labels">${labelsHTML}</div>
+            <div class="qx-post-labels">${categoryHTML}${labelsHTML}</div>
         </header>
         <div class="qx-post-body">${articleBodyHTML}</div>
         <footer class="qx-post-footer">
@@ -1130,10 +1346,22 @@ function updateArticlesJSON(newArticle) {
 
 function updateTagsJSON(articles) {
     const allLabels = [...new Set(articles.flatMap(a => a.labels || []))];
-    const tags = allLabels.map(label => ({
-        label,
-        count: articles.filter(a => (a.labels || []).includes(label)).length,
-    }));
+    // 先构建 label→slug 映射（从已有 article.labelSlugs 中查找）
+    const labelSlugMap = {};
+    for (const article of articles) {
+        const articleLabels = article.labels || [];
+        const articleSlugs = article.labelSlugs || [];
+        for (let i = 0; i < articleLabels.length; i++) {
+            const label = articleLabels[i];
+            if (!labelSlugMap[label] && articleSlugs[i]) {
+                labelSlugMap[label] = articleSlugs[i];
+            }
+        }
+    }
+    const tags = allLabels.map(label => {
+        const slug = labelSlugMap[label] || genSlug(label);
+        return { label, slug, count: articles.filter(a => (a.labels || []).includes(label)).length };
+    });
     saveJSON(TAGS_JSON_PATH, tags);
     return tags;
 }
@@ -1178,7 +1406,8 @@ async function removeArticle(articleId, { keepMarkdown = false } = {}) {
     }
 
     const tags = updateTagsJSON(articles);
-    generateSitemap(articles, tags);
+    const categories = updateCategoriesJSON(articles);
+    generateSitemap(articles, tags, categories);
     generateRobotsTxt();
 
     const doneLabel = keepMarkdown ? 'closed' : 'deleted';
@@ -1196,86 +1425,204 @@ async function closeArticle(articleId) {
     return removeArticle(articleId, { keepMarkdown: true });
 }
 
-function isIssueClosed(issueId) {
-    const viewOutput = execSync(`gh issue view ${issueId} --json state`, {
-        encoding: 'utf-8',
-        cwd: ROOT,
-    });
-    const { state } = JSON.parse(viewOutput);
-    return state === 'CLOSED';
+function isDiscussionClosed() {
+    return false;
 }
 
-const GITHUB_ISSUE_JSON_FIELDS = 'number,title,body,labels,createdAt,author,updatedAt,state';
-
-function fetchGitHubIssue(issueNumber) {
-    const output = execSync(`gh issue view ${issueNumber} --json ${GITHUB_ISSUE_JSON_FIELDS}`, {
-        encoding: 'utf-8',
-        cwd: ROOT,
-    });
-    return JSON.parse(output);
+/** 从 GitHub GQL 结果中提取 label 名称数组 */
+function extractLabelNames(gqlLabels) {
+    if (!gqlLabels) return [];
+    const nodes = Array.isArray(gqlLabels.nodes) ? gqlLabels.nodes : (Array.isArray(gqlLabels) ? gqlLabels : []);
+    return nodes.map(n => typeof n === 'string' ? n : n.name).filter(Boolean);
 }
 
-/** 用 workflow 事件中的最新标题/正文/标签覆盖（edited 时避免 issue list 数据滞后） */
-function applyCiIssueEventPayload(issue) {
-    const next = { ...issue };
-    if (process.env.ISSUE_TITLE != null && process.env.ISSUE_TITLE !== '') {
-        next.title = process.env.ISSUE_TITLE;
+/** 从 GitHub GQL 结果中提取 category */
+function extractCategory(gqlCategory) {
+    if (!gqlCategory || typeof gqlCategory !== 'object') return null;
+    return { name: gqlCategory.name || '', slug: gqlCategory.slug || '' };
+}
+
+function getGitHubRepo() {
+    const repo = process.env.GITHUB_REPOSITORY || '';
+    const [owner, name] = repo.split('/');
+    return { owner: owner || '', name: name || '' };
+}
+
+function runGhApiGraphQL(queryJson) {
+    const tempPath = path.join(BLOG_DATA_DIR, `.gql-tmp-${Date.now()}.json`);
+    ensureDir(path.dirname(tempPath));
+    fs.writeFileSync(tempPath, queryJson, 'utf-8');
+    try {
+        const output = execSync(`gh api graphql --input ${tempPath}`, {
+            encoding: 'utf-8',
+            cwd: ROOT,
+        });
+        return JSON.parse(output);
+    } catch (err) {
+        log('Error', 'GraphQL API call failed', { error: err.message });
+        throw err;
+    } finally {
+        if (fs.existsSync(tempPath)) {
+            try { fs.unlinkSync(tempPath); } catch (e) {}
+        }
     }
-    if (process.env.ISSUE_BODY != null) {
-        next.body = process.env.ISSUE_BODY;
+}
+
+function fetchGitHubDiscussion(discussionNumber) {
+    const { owner, name } = getGitHubRepo();
+    const query = `
+        query ($number: Int!) {
+            repository(owner: "${owner}", name: "${name}") {
+                discussion(number: $number) {
+                    number
+                    title
+                    body
+                    createdAt
+                    updatedAt
+                    author { login }
+                    category { name slug }
+                    labels(first: 100) { nodes { name } }
+                }
+            }
+        }
+    `;
+    const payload = JSON.stringify({
+        query,
+        variables: { number: parseInt(discussionNumber) }
+    });
+    const result = runGhApiGraphQL(payload);
+    const d = result?.data?.repository?.discussion;
+    if (!d) {
+        throw new Error(`Discussion #${discussionNumber} not found`);
     }
-    if (process.env.ISSUE_DATE) {
-        next.updatedAt = process.env.ISSUE_DATE;
+    return {
+        number: d.number,
+        title: d.title,
+        body: d.body,
+        createdAt: d.createdAt,
+        updatedAt: d.updatedAt,
+        author: d.author,
+        category: extractCategory(d.category),
+        labels: extractLabelNames(d.labels),
+        state: 'OPEN'
+    };
+}
+
+function fetchGitHubDiscussionsAll(limit) {
+    const { owner, name } = getGitHubRepo();
+    const pageSize = Math.min(limit || 100, 100);
+    const query = `
+        query ($first: Int!) {
+            repository(owner: "${owner}", name: "${name}") {
+                discussions(first: $first, orderBy: { field: UPDATED_AT, direction: DESC }) {
+                    nodes {
+                        number
+                        title
+                        body
+                        createdAt
+                        updatedAt
+                        author { login }
+                        category { name slug }
+                        labels(first: 100) { nodes { name } }
+                    }
+                }
+            }
+        }
+    `;
+    const payload = JSON.stringify({ query, variables: { first: pageSize } });
+    const result = runGhApiGraphQL(payload);
+    const nodes = result?.data?.repository?.discussions?.nodes || [];
+    return nodes.map(d => ({
+        number: d.number,
+        title: d.title,
+        body: d.body,
+        createdAt: d.createdAt,
+        updatedAt: d.updatedAt,
+        author: d.author,
+        category: extractCategory(d.category),
+        labels: extractLabelNames(d.labels),
+        state: 'OPEN'
+    }));
+}
+
+/** 用 workflow 事件中的最新标题/正文/标签/分类覆盖 */
+function applyCiDiscussionEventPayload(discussion) {
+    const next = { ...discussion };
+    if (process.env.DISCUSSION_TITLE != null && process.env.DISCUSSION_TITLE !== '') {
+        next.title = process.env.DISCUSSION_TITLE;
     }
-    if (process.env.ISSUE_LABELS) {
+    if (process.env.DISCUSSION_BODY != null) {
+        next.body = process.env.DISCUSSION_BODY;
+    }
+    if (process.env.DISCUSSION_DATE) {
+        next.updatedAt = process.env.DISCUSSION_DATE;
+    }
+    if (process.env.DISCUSSION_LABELS) {
         try {
-            const names = JSON.parse(process.env.ISSUE_LABELS);
+            const names = JSON.parse(process.env.DISCUSSION_LABELS);
             if (Array.isArray(names)) {
-                next.labels = names.map((name) => ({ name: String(name) }));
+                next.labels = names.map((name) => String(name));
             }
         } catch (err) {
-            log('Warning', 'Failed to parse ISSUE_LABELS', { error: err.message });
+            log('Warning', 'Failed to parse DISCUSSION_LABELS', { error: err.message });
         }
+    }
+    if (process.env.DISCUSSION_CATEGORY_NAME != null && process.env.DISCUSSION_CATEGORY_NAME !== '') {
+        const slug = process.env.DISCUSSION_CATEGORY_SLUG || '';
+        next.category = { name: process.env.DISCUSSION_CATEGORY_NAME, slug };
     }
     return next;
 }
 
-async function processGitHubIssueToArticle(issue, articles, markdownDir) {
-    const articleId = issueNumberToArticleId(issue.number);
-    const localDate = new Date(issue.createdAt).toISOString();
-    const updatedAt = issue.updatedAt ? new Date(issue.updatedAt).toISOString() : localDate;
-    const labelsArray = issue.labels?.map(l => l.name) || [];
-    const author = siteCfg.site?.author || issue.author?.login || 'Anonymous';
+async function processGitHubDiscussionToArticle(discussion, articles, markdownDir) {
+    const articleId = discussionNumberToArticleId(discussion.number);
+    const localDate = new Date(discussion.createdAt).toISOString();
+    const updatedAt = discussion.updatedAt ? new Date(discussion.updatedAt).toISOString() : localDate;
+    const labelsArray = Array.isArray(discussion.labels)
+        ? discussion.labels
+        : (discussion.labels?.nodes?.map(l => l.name) || []);
+    const labelSlugsArray = labelsArray.map(l => genSlug(l));
+    const author = siteCfg.site?.author || discussion.author?.login || 'Anonymous';
+    const categoryName = typeof discussion.category === 'object' ? discussion.category?.name : '';
+    const categorySlugVal = typeof discussion.category === 'object' ? discussion.category?.slug : '';
 
-    log('Process', `Processing issue #${issue.number} → article #${articleId}`, {
-        title: issue.title,
+    log('Process', `Processing discussion #${discussion.number} → article #${articleId}`, {
+        title: discussion.title,
         date: localDate,
         updatedAt,
         labels: labelsArray,
+        category: categoryName,
+        categorySlug: categorySlugVal,
     });
 
     const markdownPath = path.join(markdownDir, `${articleId}.md`);
     const frontmatter = `---
-title: "${yamlEscapeDoubleQuoted(issue.title)}"
+title: "${yamlEscapeDoubleQuoted(discussion.title)}"
 date: "${yamlEscapeDoubleQuoted(localDate)}"
 updated: "${yamlEscapeDoubleQuoted(updatedAt)}"
 tags: ${JSON.stringify(labelsArray)}
+tagSlugs: ${JSON.stringify(labelSlugsArray)}
+category: "${yamlEscapeDoubleQuoted(categoryName)}"
+categorySlug: "${yamlEscapeDoubleQuoted(categorySlugVal)}"
 author: "${yamlEscapeDoubleQuoted(author)}"
 id: ${articleId}
 ---
 
-${issue.body || ''}`;
+${discussion.body || ''}`;
     fs.writeFileSync(markdownPath, frontmatter, 'utf-8');
     log('File', `Regenerated markdown (frontmatter + body): ${markdownPath}`);
 
     const article = await buildSingleArticle({
         id: articleId,
-        title: issue.title,
+        title: discussion.title,
         author,
         date: localDate,
         updated: updatedAt,
         labels: labelsArray,
-        body: issue.body || '',
+        labelSlugs: labelSlugsArray,
+        category: categoryName,
+        categorySlug: categorySlugVal,
+        body: discussion.body || '',
         markdownPath: `blogData/markdown/${articleId}.md`,
     });
 
@@ -1293,112 +1640,92 @@ ${issue.body || ''}`;
     return article;
 }
 
-async function buildFromGitHubIssues() {
-    const issueAction = process.env.ISSUE_ACTION || '';
-    const issueId = process.env.ISSUE_ID ? parseInt(process.env.ISSUE_ID) : null;
+async function buildFromGitHubDiscussions() {
+    const discussionAction = process.env.DISCUSSION_ACTION || process.env.ISSUE_ACTION || '';
+    const discussionId = process.env.DISCUSSION_NUMBER
+        ? parseInt(process.env.DISCUSSION_NUMBER)
+        : (process.env.ISSUE_ID ? parseInt(process.env.ISSUE_ID) : null);
 
-    const issueAuthor = process.env.ISSUE_AUTHOR || '';
-    if (!isBuildAuthorAllowed(issueAuthor)) {
-        log('Cancel', 'Build cancelled: issue author is not allowed to trigger CI', {
+    const discussionAuthor = process.env.DISCUSSION_AUTHOR || process.env.ISSUE_AUTHOR || '';
+    if (!isBuildAuthorAllowed(discussionAuthor)) {
+        log('Cancel', 'Build cancelled: discussion author is not allowed to trigger CI', {
             reason: 'AUTHOR_MISMATCH',
-            issueAuthor: issueAuthor || '(empty)',
+            discussionAuthor: discussionAuthor || '(empty)',
             allowedAuthor: ALLOWED_BUILD_AUTHOR,
         });
         return;
     }
-    
+
     // 删除事件：移除 HTML、元数据及 md 文件
-    if (issueAction === 'deleted' && issueId) {
-        const articleId = issueNumberToArticleId(issueId);
-        log('Config', `Deleting article mapped from issue #${issueId} → #${articleId}`);
+    if (discussionAction === 'deleted' && discussionId) {
+        const articleId = discussionNumberToArticleId(discussionId);
+        log('Config', `Deleting article mapped from discussion #${discussionId} → #${articleId}`);
         await deleteArticle(articleId);
         return;
     }
 
     // 关闭事件：与删除相同，但保留 md 文件
-    if (issueAction === 'closed' && issueId) {
-        const articleId = issueNumberToArticleId(issueId);
-        log('Config', `Closing article mapped from issue #${issueId} → #${articleId}`);
+    if (discussionAction === 'closed' && discussionId) {
+        const articleId = discussionNumberToArticleId(discussionId);
+        log('Config', `Closing article mapped from discussion #${discussionId} → #${articleId}`);
         await closeArticle(articleId);
         return;
     }
 
-    // 编辑已关闭的 Issue 时不构建（与作者不匹配时同样直接跳过）
-    if (issueAction === 'edited' && issueId) {
-        try {
-            if (isIssueClosed(issueId)) {
-                log('Cancel', 'Build cancelled: cannot process edits on a closed issue', {
-                    reason: 'ISSUE_CLOSED',
-                    issueId,
-                    action: issueAction,
-                });
-                return;
-            }
-        } catch (err) {
-            log('Warning', 'Failed to check issue state', { error: err.message });
-        }
-    }
-
     log('Start', 'QxBlog CI Build Script Starting...');
     log('Info', 'Root directory', { root: ROOT });
-    
-    // 构建模式判断：单文章 vs 全部
-    const buildMode = issueId ? 'single' : 'all';
-    log('Config', `Build mode: ${buildMode}`, { 
-        mode: buildMode, 
-        issueId: issueId || 'N/A' 
-    });
-    
-    ensureDir(POSTS_DIR);
-    
-    const issueRE = /^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?!?:/i;
-    
-    try {
-        let targetIssues;
 
-        if (issueId) {
-            log('GitHub', `Fetching latest issue #${issueId}...`);
-            let issue;
+    // 构建模式判断：单文章 vs 全部
+    const buildMode = discussionId ? 'single' : 'all';
+    log('Config', `Build mode: ${buildMode}`, {
+        mode: buildMode,
+        discussionId: discussionId || 'N/A'
+    });
+
+    ensureDir(POSTS_DIR);
+
+    const discussionRE = /^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?!?:/i;
+
+    try {
+        let targetDiscussions;
+
+        if (discussionId) {
+            log('GitHub', `Fetching latest discussion #${discussionId}...`);
+            let discussion;
             try {
-                issue = fetchGitHubIssue(issueId);
-                issue = applyCiIssueEventPayload(issue);
-                targetIssues = [issue];
+                discussion = fetchGitHubDiscussion(discussionId);
+                discussion = applyCiDiscussionEventPayload(discussion);
+                targetDiscussions = [discussion];
             } catch (err) {
-                log('Error', `Issue #${issueId} not found or failed to fetch`, { error: err.message });
+                log('Error', `Discussion #${discussionId} not found or failed to fetch`, { error: err.message });
                 process.exit(1);
             }
-            log('GitHub', `Single issue mode - Building issue #${issueId}`, {
-                issueNumber: issueId,
-                issueTitle: issue.title,
-                action: issueAction,
+            log('GitHub', `Single discussion mode - Building discussion #${discussionId}`, {
+                discussionNumber: discussionId,
+                discussionTitle: discussion.title,
+                action: discussionAction,
+                category: discussion.category,
             });
-            if (issueAction === 'edited') {
-                log('Info', 'Edit event: updating articles.json, markdown frontmatter, and body');
-            }
         } else {
-            log('GitHub', 'Fetching issues from GitHub...');
-            const output = execSync(`gh issue list --state all --limit 1000 --json ${GITHUB_ISSUE_JSON_FIELDS}`, {
-                encoding: 'utf-8',
-                cwd: ROOT,
-            });
-            const issues = JSON.parse(output);
+            log('GitHub', 'Fetching discussions from GitHub...');
+            const discussions = fetchGitHubDiscussionsAll(1000);
 
-            if (!issues || issues.length === 0) {
-                log('Warning', 'No issues found in repository');
+            if (!discussions || discussions.length === 0) {
+                log('Warning', 'No discussions found in repository');
                 return;
             }
 
-            targetIssues = issues;
-            log('GitHub', `All issues mode - Found ${issues.length} total issues`, {
-                issueNumbers: issues.map(i => i.number),
+            targetDiscussions = discussions;
+            log('GitHub', `All discussions mode - Found ${discussions.length} total discussions`, {
+                discussionNumbers: discussions.map(i => i.number),
             });
         }
 
-        if (!targetIssues || targetIssues.length === 0) {
-            log('Warning', 'No issues to process');
+        if (!targetDiscussions || targetDiscussions.length === 0) {
+            log('Warning', 'No discussions to process');
             return;
         }
-        
+
         // 加载已有的文章列表（如果是单文章模式）
         let articles = [];
         if (buildMode === 'single') {
@@ -1407,91 +1734,90 @@ async function buildFromGitHubIssues() {
                 log('Info', `Loaded ${articles.length} existing articles from articles.json`);
             }
         }
-        
+
         const markdownDir = path.join(BLOG_DATA_DIR, 'markdown');
         ensureDir(markdownDir);
-        
+
         let skippedCount = 0;
         let processedCount = 0;
-        
-        for (const issue of targetIssues) {
-            const isConventionalCommit = issueRE.test(issue.title);
-            const hasArticleLabel = issue.labels?.some(l => l.name === 'article');
-            const hasNoArticleLabel = issue.labels?.some(l => l.name === 'no-article');
-            
-            log('Filter', `Checking issue #${issue.number}: "${issue.title}"`, {
-                isConventionalCommit,
-                hasArticleLabel,
-                hasNoArticleLabel,
-                labels: issue.labels?.map(l => l.name) || []
+
+        for (const discussion of targetDiscussions) {
+            const hasNoArticleLabel = (discussion.labels || []).some(l => {
+                const name = typeof l === 'string' ? l : l.name;
+                return name === 'no-article';
             });
-            
-            // Skip only if explicitly marked as no-article
+
+            log('Filter', `Checking discussion #${discussion.number}: "${discussion.title}"`, {
+                labels: discussion.labels,
+                category: discussion.category,
+            });
+
             if (hasNoArticleLabel) {
-                log('Skip', `Issue #${issue.number} skipped (marked as no-article)`, { reason: 'Has no-article label' });
+                log('Skip', `Discussion #${discussion.number} skipped (marked as no-article)`);
                 skippedCount++;
                 continue;
             }
 
-            if (issueAction === 'edited' && issue.state === 'CLOSED') {
-                log('Skip', `Issue #${issue.number} skipped (issue is closed)`, { reason: 'Edits to closed issues are ignored' });
-                skippedCount++;
-                continue;
-            }
-
-            const issueCreator = issue.author?.login || '';
-            if (!isBuildAuthorAllowed(issueCreator)) {
-                log('Skip', `Issue #${issue.number} skipped (author mismatch)`, {
-                    issueAuthor: issueCreator,
+            const discussionCreator = discussion.author?.login || '';
+            if (!isBuildAuthorAllowed(discussionCreator)) {
+                log('Skip', `Discussion #${discussion.number} skipped (author mismatch)`, {
+                    discussionAuthor: discussionCreator,
                     allowedAuthor: ALLOWED_BUILD_AUTHOR,
                 });
                 skippedCount++;
                 continue;
             }
-            
+
             processedCount++;
 
-            await processGitHubIssueToArticle(issue, articles, markdownDir);
+            await processGitHubDiscussionToArticle(discussion, articles, markdownDir);
         }
-        
-        log('Summary', `Issue processing complete (${buildMode} mode)`, {
+
+        log('Summary', `Discussion processing complete (${buildMode} mode)`, {
             mode: buildMode,
-            totalIssues: targetIssues.length,
+            totalDiscussions: targetDiscussions.length,
             processed: processedCount,
             skipped: skippedCount,
             articlesGenerated: articles.length
         });
-        
+
         // 对所有文章按时间排序
         sortArticlesByUpdated(articles);
         saveJSON(ARTICLES_JSON_PATH, articles);
-        
+
         const allLabels = [...new Set(articles.flatMap(a => a.labels || []))];
         const tags = genTagsJSON(allLabels, articles);
         saveJSON(TAGS_JSON_PATH, tags);
-        
+
+        const categories = updateCategoriesJSON(articles);
+
         log('Data', 'Tags generated', { tags });
-        
+        log('Data', 'Categories generated', { categories });
+
         cleanupLegacyPaginationData();
-        
-        generateSitemap(articles, tags);
+
+        generateSitemap(articles, tags, categories);
         generateRobotsTxt();
-        
+
         // 生成标签详情页
         await generateTagPages(tags, articles);
-        
+        // 生成分类详情页
+        await generateCategoryPages(categories, articles);
+
         log('Complete', `Build complete! (${buildMode} mode)`, {
             mode: buildMode,
             totalArticles: articles.length,
             totalTags: tags.length,
+            totalCategories: categories.length,
             outputFiles: {
                 articles: ARTICLES_JSON_PATH,
                 tags: TAGS_JSON_PATH,
+                categories: CATEGORIES_JSON_PATH,
                 posts: POSTS_DIR,
                 markdown: path.join(BLOG_DATA_DIR, 'markdown')
             }
         });
-        
+
     } catch (err) {
         log('Error', 'Build failed', { error: err.message, stack: err.stack });
         process.exit(1);
@@ -1520,22 +1846,27 @@ async function buildFromLocalMarkdown(fileId) {
 
     const articles = updateArticlesJSON(article);
     const tags = updateTagsJSON(articles);
+    const categories = updateCategoriesJSON(articles);
 
-    generateSitemap(articles, tags);
+    generateSitemap(articles, tags, categories);
     generateRobotsTxt();
-    
+
     // 生成标签详情页
     await generateTagPages(tags, articles);
+    // 生成分类详情页
+    await generateCategoryPages(categories, articles);
 
     log('Complete', 'Build complete!', {
         articleId: article.id,
         articleTitle: article.title,
         totalArticles: articles.length,
         totalTags: tags.length,
+        totalCategories: categories.length,
         outputFiles: {
             post: path.join(POSTS_DIR, `${article.id}.html`),
             articles: ARTICLES_JSON_PATH,
             tags: TAGS_JSON_PATH,
+            categories: CATEGORIES_JSON_PATH,
         }
     });
 }
@@ -1543,49 +1874,54 @@ async function buildFromLocalMarkdown(fileId) {
 async function buildAllLocalArticles() {
     log('Start', 'QxBlog Local Build - All Articles Mode');
     log('Info', 'Root directory', { root: ROOT });
-    
+
     ensureDir(POSTS_DIR);
     ensureDir(MARKDOWN_DIR);
-    
+
     const files = fs.readdirSync(MARKDOWN_DIR).filter(f => f.endsWith('.md'));
-    
+
     if (files.length === 0) {
         log('Warning', 'No markdown files found');
         return;
     }
-    
+
     log('Info', `Found ${files.length} markdown files`, {
         files: files.sort()
     });
-    
+
     const articles = [];
-    
+
     for (const file of files) {
         const fileId = file.replace('.md', '');
-        
+
         const article = await buildSingleArticle(fileId);
-        
+
         if (article) {
             articles.push(article);
         }
     }
-    
+
     const updatedArticles = updateArticlesJSONFromArray(articles);
     const tags = updateTagsJSON(updatedArticles);
-    
-    generateSitemap(updatedArticles, tags);
+    const categories = updateCategoriesJSON(updatedArticles);
+
+    generateSitemap(updatedArticles, tags, categories);
     generateRobotsTxt();
-    
+
     // 生成标签详情页
     await generateTagPages(tags, updatedArticles);
-    
+    // 生成分类详情页
+    await generateCategoryPages(categories, updatedArticles);
+
     log('Complete', 'Build complete!', {
         totalArticles: updatedArticles.length,
         totalTags: tags.length,
+        totalCategories: categories.length,
         outputFiles: {
             posts: POSTS_DIR,
             articles: ARTICLES_JSON_PATH,
             tags: TAGS_JSON_PATH,
+            categories: CATEGORIES_JSON_PATH,
         }
     });
 }
@@ -1612,40 +1948,54 @@ function updateArticlesJSONFromArray(newArticles) {
     return articles;
 }
 
-function generateSitemap(articles, tags) {
+function generateSitemap(articles, tags, categories) {
     const sitemapPath = path.join(ROOT, 'sitemap.xml');
     const now = new Date().toISOString();
-    
+
     let urls = [];
-    
+
     urls.push({
         loc: SITE_URL,
         lastmod: now,
         changefreq: 'daily',
         priority: '1.0'
     });
-    
+
     urls.push({
         loc: `${SITE_URL}/articles/`,
         lastmod: now,
         changefreq: 'daily',
         priority: '0.9'
     });
-    
+
     urls.push({
         loc: `${SITE_URL}/tags/`,
         lastmod: now,
         changefreq: 'weekly',
         priority: '0.8'
     });
-    
+
+    urls.push({
+        loc: `${SITE_URL}/categories/`,
+        lastmod: now,
+        changefreq: 'weekly',
+        priority: '0.8'
+    });
+
+    urls.push({
+        loc: `${SITE_URL}/archive/`,
+        lastmod: now,
+        changefreq: 'weekly',
+        priority: '0.7'
+    });
+
     urls.push({
         loc: `${SITE_URL}/about/`,
         lastmod: now,
         changefreq: 'monthly',
         priority: '0.5'
     });
-    
+
     if (Array.isArray(articles)) {
         for (const article of articles) {
             urls.push({
@@ -1656,30 +2006,43 @@ function generateSitemap(articles, tags) {
             });
         }
     }
-    
+
     if (Array.isArray(tags)) {
         for (const tag of tags) {
+            const tagSlug = tag.slug || genSlug(tag.label);
             urls.push({
-                loc: `${SITE_URL}/tags/${encodeURIComponent(tag.label)}/`,
+                loc: `${SITE_URL}/tags/${tagSlug}/`,
                 lastmod: now,
                 changefreq: 'weekly',
                 priority: '0.6'
             });
         }
     }
-    
+
+    if (Array.isArray(categories)) {
+        for (const cat of categories) {
+            if (!cat.slug) continue;
+            urls.push({
+                loc: `${SITE_URL}/categories/${cat.slug}/`,
+                lastmod: now,
+                changefreq: 'weekly',
+                priority: '0.6'
+            });
+        }
+    }
+
     const urlEntries = urls.map(u => `  <url>
     <loc>${esc(u.loc)}</loc>
     <lastmod>${u.lastmod}</lastmod>
     <changefreq>${u.changefreq}</changefreq>
     <priority>${u.priority}</priority>
   </url>`).join('\n');
-    
+
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urlEntries}
 </urlset>`;
-    
+
     fs.writeFileSync(sitemapPath, sitemap, 'utf-8');
     log('Sitemap', `Generated sitemap.xml with ${urls.length} URLs`, { path: sitemapPath });
     return sitemapPath;
@@ -1753,24 +2116,24 @@ localCommand
         
         log('Complete', '所有文章已删除');
     } else {
-        const issueId = parseInt(id);
-        if (isNaN(issueId)) {
+        const discussionId = parseInt(id);
+        if (isNaN(discussionId)) {
             log('Error', `Invalid article ID: ${id}`);
             process.exit(1);
         }
-        await deleteArticle(issueId);
+        await deleteArticle(discussionId);
     }
   });
 
 const ciCommand = program
   .command('ci')
-  .description('CI Issues 操作');
+  .description('CI Discussions 操作');
 
 ciCommand
   .command('build')
-  .description('从 GitHub Issues 构建文章')
+  .description('从 GitHub Discussions 构建文章')
   .action(async () => {
-    await buildFromGitHubIssues();
+    await buildFromGitHubDiscussions();
   });
 
 program.parseAsync().catch(err => {

@@ -1,7 +1,7 @@
 <div align="center">
   <img src="img/logo/dark.svg" alt="QxBlog Logo" width="120" height="120">
   <h1>QxBlog</h1>
-  <p>基于 Issues 驱动的静态博客系统</p>
+  <p>基于 Discussions 驱动的静态博客系统</p>
   <p>
     <img src="https://img.shields.io/badge/license-GPL--3.0-blue.svg" alt="License">
     <img src="https://img.shields.io/badge/build-GitHub%20Actions-green.svg" alt="Build">
@@ -14,7 +14,7 @@
 
 ## 简介
 
-QxBlog 是一个基于 **Issues 驱动**的静态博客系统。通过 GitHub Issues 管理文章，利用 GitHub Actions 自动构建并部署到 GitHub Pages。无需数据库，无需服务器，只需一个 GitHub 仓库即可拥有完整的博客站点。
+QxBlog 是一个基于 **Discussions 驱动**的静态博客系统。通过 GitHub Discussions 管理文章，利用 GitHub Actions 自动构建并部署到 GitHub Pages。无需数据库，无需服务器，只需一个 GitHub 仓库即可拥有完整的博客站点。
 
 > 「用代码，写世界。」
 
@@ -24,8 +24,8 @@ QxBlog 是一个基于 **Issues 驱动**的静态博客系统。通过 GitHub Is
 
 ### 核心功能
 
-- **Issues 驱动写作** — 通过 GitHub Issues 创建、编辑和管理文章，写作体验与 GitHub 原生一致
-- **自动化构建部署** — 利用 GitHub Actions 实现文章的自动构建与部署，Issue 的创建、编辑、删除、关闭都会触发重新构建
+- **Discussions 驱动写作** — 通过 GitHub Discussions 创建、编辑和管理文章，写作体验与 GitHub 原生一致
+- **自动化构建部署** — 利用 GitHub Actions 实现文章的自动构建与部署，Discussion 的创建、编辑、删除、关闭、分类变更都会触发重新构建
 - **响应式设计** — 适配桌面端和移动端设备，提供一致的阅读体验
 - **深色/浅色主题** — 支持自动跟随系统主题或手动切换
 
@@ -34,10 +34,11 @@ QxBlog 是一个基于 **Issues 驱动**的静态博客系统。通过 GitHub Is
 - **Markdown 支持** — 完整支持 GitHub Flavored Markdown（GFM）语法
 - **代码高亮** — 基于 Shiki 的代码高亮，支持多种编程语言，带语言标签和一键复制功能
 - **数学公式** — 支持 KaTeX 渲染数学公式，兼容行内公式和块级公式
-- **文章分类** — 通过 GitHub Labels 实现文章分类，支持按分类浏览
+- **分类与标签** — Discussion Category 作为文章分类，Discussion Labels 作为文章标签，支持按分类和标签浏览
 - **文章搜索** — 支持按标题、标签、正文内容实时搜索
 - **目录导航** — 文章页自动生成目录（TOC），便于快速跳转
 - **分页浏览** — 文章列表支持分页，可配置每页显示数量
+- **归档页面** — 按年份分组展示所有文章
 
 ### SEO 与性能
 
@@ -89,6 +90,7 @@ QxBlog 是一个基于 **Issues 驱动**的静态博客系统。通过 GitHub Is
 ### 前置要求
 
 - GitHub 账号
+- 开启仓库的 GitHub Discussions 功能
 - 开启仓库的 GitHub Pages 功能
 
 ### 快速开始
@@ -96,16 +98,21 @@ QxBlog 是一个基于 **Issues 驱动**的静态博客系统。通过 GitHub Is
 1. **Fork 本仓库** 到自己的 GitHub 账号下
 
 2. **配置仓库设置**
-   - 进入仓库 `Settings` → `Pages`
-   - Source 选择 `GitHub Actions`
+   - 进入仓库 `Settings` → `Discussions`，勾选 "Enable discussions for this repository"
+   - 进入仓库 `Settings` → `Pages`，Source 选择 `GitHub Actions`
 
-3. **开始写作**
-   - 在仓库的 Issues 中新建一个 Issue
+3. **设置分类（Categories）**
+   - 在 Discussions 页面创建分类，例如：技术、设计、随笔
+   - 分类的 slug 将用于 URL，建议使用英文或拼音
+
+4. **开始写作**
+   - 在仓库的 Discussions 中新建一个 Discussion
+   - 选择分类（Category）
    - 添加标题和正文（支持 Markdown 语法）
-   - 为 Issue 添加标签（Label）作为文章分类
+   - 为 Discussion 添加标签（Label）作为文章标签
    - 保存后，GitHub Actions 将自动构建并部署
 
-4. **访问博客**
+5. **访问博客**
    - 构建完成后，访问 `https://<你的用户名>.github.io/<仓库名>`
 
 ### 本地开发
@@ -123,7 +130,6 @@ bun install
 bun qxBlogBuild.js local build all
 
 # 或者启动本地服务器预览
-# 使用任意静态服务器工具，例如：
 # cd ../..
 # python -m http.server 8000
 # 或 npx serve .
@@ -138,7 +144,7 @@ bun qxBlogBuild.js local build all
 # 从本地 Markdown 文件构建指定 ID 的文章
 bun qxBlogBuild.js local build <id>
 
-# CI 模式（从 GitHub Issues 构建，用于 GitHub Actions）
+# CI 模式（从 GitHub Discussions 构建，用于 GitHub Actions）
 bun qxBlogBuild.js ci build
 
 # 删除所有文章
@@ -179,7 +185,7 @@ bun qxBlogBuild.js --help
 |--------|------|------|
 | `author` | string | 构建作者标识 |
 | `timezoneOffset` | string | 时区偏移（如 `+08:00`） |
-| `githubStartId` | number | GitHub Issue 起始编号偏移 |
+| `githubStartId` | number | GitHub Discussion 起始编号偏移 |
 | `maxArticlesPerPage` | number | 每页显示文章数量 |
 | `robots` | object | robots.txt 配置 |
 
@@ -194,9 +200,12 @@ QxBlog/
 │   └── workflows/
 │       └── qxblog-build.yml # GitHub Actions 工作流
 ├── about/                   # 关于页面
+├── archive/                 # 归档页面
 ├── articles/                # 文章列表页
+├── categories/              # 分类页面
 ├── blogData/                # 博客数据
 │   ├── articles.json        # 文章索引
+│   ├── categories.json      # 分类数据
 │   ├── tags.json            # 标签数据
 │   └── markdown/            # Markdown 源文件
 ├── tags/                    # 标签页面
@@ -217,6 +226,8 @@ QxBlog/
 ├── js/                      # JavaScript 模块
 │   ├── default.js           # 主入口（模块加载、代码复制、表格包装等）
 │   ├── articles.js          # 文章列表与分页
+│   ├── archive.js           # 归档列表渲染
+│   ├── categories.js        # 分类列表渲染
 │   ├── tags.js              # 标签管理
 │   ├── config.js            # 配置加载与导航渲染
 │   ├── nav.js               # 导航栏交互
@@ -238,15 +249,17 @@ QxBlog/
 | QxConfig | `js/config.js` | 加载配置、渲染导航栏和侧边栏 |
 | QxNav | `js/nav.js` | 移动端菜单、主题切换、当前页面高亮 |
 | QxSearch | `js/search.js` | 实时搜索（标题/标签/正文），键盘导航 |
-| QxArticles | `js/articles.js` | 文章列表渲染、分页逻辑、标签筛选 |
+| QxArticles | `js/articles.js` | 文章列表渲染、分页逻辑、分类/标签筛选 |
 | QxTags | `js/tags.js` | 标签列表加载与渲染 |
+| QxCategories | `js/categories.js` | 分类列表加载与渲染 |
+| QxArchive | `js/archive.js` | 归档列表按年份分组渲染 |
 | QxToc | `js/toc.js` | 文章目录生成、滚动高亮、点击跳转 |
 
 ## 写作指南
 
-### Issue 格式
+### Discussion 格式
 
-GitHub Issue 的标题即为文章标题，正文即为文章内容。支持所有 GitHub Flavored Markdown 语法：
+GitHub Discussion 的标题即为文章标题，正文即为文章内容。支持所有 GitHub Flavored Markdown 语法：
 
 - 标题、段落、列表
 - 代码块（支持语法高亮）
@@ -255,17 +268,24 @@ GitHub Issue 的标题即为文章标题，正文即为文章内容。支持所�
 - 数学公式（`$...$` 行内，`$$...$$` 块级）
 - 图片与链接
 
-### 使用 Labels 分类
+### 使用 Category 分类
 
-为 Issue 添加 Labels 即可为文章设置分类。例如：
+创建 Discussion 时必须选择一个分类（Category），分类将自动作为文章的分类。例如：
 - `技术`
 - `设计`
 - `随笔`
 
-### 关闭/删除 Issue
+### 使用 Labels 标签
 
-- **关闭 Issue**：文章将保留，但标记为关闭状态
-- **删除 Issue**：文章将从博客中移除
+为 Discussion 添加 Labels 即可为文章设置标签。例如：
+- `前端`
+- `JavaScript`
+- `设计思考`
+
+### 关闭/删除 Discussion
+
+- **关闭 Discussion**：文章将保留，但标记为关闭状态
+- **删除 Discussion**：文章将从博客中移除
 
 ## 许可证
 

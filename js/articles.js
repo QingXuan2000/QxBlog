@@ -2,10 +2,12 @@ const ROOT = new URL('..', import.meta.url).href;
 const BLOG_ARTICLES = new URL('../blogData/articles.json', import.meta.url).href;
 
 export class QxArticles {
-    constructor(container, paginationEl, label, pageSize) {
+    constructor(container, paginationEl, opts, pageSize) {
         this.container = container;
         this.paginationEl = paginationEl;
-        this.label = label;
+        const o = opts || {};
+        this.source = o.source; // 'tag' | 'category' | null
+        this.label = o.label;   // slug (tag slug or categorySlug)
         this.currentPage = 1;
         this.totalPages = 1;
         this.totalItems = 0;
@@ -37,7 +39,15 @@ export class QxArticles {
 
     _filterByLabel(articles) {
         if (!this.label) return articles;
-        return articles.filter(a => Array.isArray(a.labels) && a.labels.includes(this.label));
+        if (this.source === 'category') {
+            return articles.filter(a => (a.categorySlug && a.categorySlug === this.label) || a.category === this.label);
+        }
+        // default: tag mode — match by labelSlugs first, fallback to raw labels
+        return articles.filter(a => {
+            if (Array.isArray(a.labelSlugs) && a.labelSlugs.includes(this.label)) return true;
+            if (Array.isArray(a.labels) && a.labels.includes(this.label)) return true;
+            return false;
+        });
     }
 
     _slicePage(articles, page) {
@@ -61,17 +71,24 @@ export class QxArticles {
 
     _render(articles) {
         this.container.innerHTML = articles.map(a => {
-            const labelsHTML = (a.labels || []).map(l => {
-                const href = new URL(`tags/${encodeURIComponent(l)}/`, ROOT).pathname;
+            const labelsHTML = (a.labels || []).map((l, i) => {
+                const slug = (a.labelSlugs && a.labelSlugs[i]) || encodeURIComponent(l);
+                const href = new URL(`tags/${slug}/`, ROOT).pathname;
                 return `<a href="${href}" class="qx-article-card-label">${l}</a>`;
             }).join('\n');
+            let categoryHTML = '';
+            if (a.category) {
+                const categorySlug = a.categorySlug || encodeURIComponent(a.category);
+                const categoryHref = new URL(`categories/${categorySlug}/`, ROOT).pathname;
+                categoryHTML = `<a href="${categoryHref}" class="qx-article-card-label qx-category-label">${a.category}</a>`;
+            }
             const href = new URL(`posts/${a.id}.html`, ROOT).pathname;
             const displayDate = this._formatDisplayDate(a.date);
             return `<div class="qx-article-card">
                 <a href="${href}" class="qx-article-card-link" aria-label="阅读文章：${a.title}"></a>
                 <div class="qx-article-card-date">${displayDate}</div>
                 <div class="qx-article-card-title">${a.title}</div>
-                <div class="qx-article-card-labels">${labelsHTML}</div>
+                <div class="qx-article-card-labels">${categoryHTML}${labelsHTML}</div>
             </div>`;
         }).join('\n');
     }

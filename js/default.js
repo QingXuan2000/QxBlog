@@ -3,6 +3,8 @@ import { QxNav } from './nav.js';
 import { QxSearch } from './search.js';
 import { QxArticles } from './articles.js';
 import { QxTags } from './tags.js';
+import { QxCategories } from './categories.js';
+import { QxArchive } from './archive.js';
 import { QxToc } from './toc.js';
 
 QxConfig.renderNav();
@@ -34,8 +36,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (pagination) {
         const grid = document.querySelector('.qx-articles-grid');
         const source = pagination.dataset.source;
-        const label = source === 'tag' ? pagination.dataset.label : null;
-        const articles = new QxArticles(grid, pagination, label, pageSize);
+        const label = (source === 'tag' || source === 'category') ? (pagination.dataset.label || pagination.dataset.category) : null;
+        const articles = new QxArticles(grid, pagination, { source, label }, pageSize);
         await articles.load(1);
     }
 
@@ -43,6 +45,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (tagList) {
         const tags = new QxTags(tagList);
         await tags.load();
+    }
+
+    const categoryList = document.querySelector('.qx-categories-list');
+    if (categoryList) {
+        const categories = new QxCategories(categoryList);
+        await categories.load();
+    }
+
+    const archiveList = document.querySelector('.qx-archive-list');
+    if (archiveList) {
+        const archive = new QxArchive(archiveList);
+        await archive.load();
     }
 
     document.querySelectorAll('.qx-post-body figure[data-rehype-pretty-code-figure]').forEach(figure => {
