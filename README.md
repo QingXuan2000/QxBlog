@@ -16,7 +16,7 @@
 
 QxBlog 是一个基于 **Discussions 驱动**的静态博客系统。通过 GitHub Discussions 管理文章，利用 GitHub Actions 自动构建并部署到 GitHub Pages。无需数据库，无需服务器，只需一个 GitHub 仓库即可拥有完整的博客站点。
 
-> 「用代码，写世界。」
+> 保持理性，保持思考
 
 ![首页预览](img/home-page-img.png)
 
