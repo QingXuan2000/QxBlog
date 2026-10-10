@@ -70,67 +70,80 @@
         </svg>
     </div>
     <section class="qx-site-intro">
-        <div class="qx-site-intro-grid">
+        <header class="qx-site-intro-header" aria-hidden="true">
+            <svg class="qx-site-intro-gridlines" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <pattern id="verticalLines" width="40" height="100" patternUnits="userSpaceOnUse">
+                        <line x1="0" y1="0" x2="0" y2="100" stroke="currentColor" stroke-width="1" />
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#verticalLines)" />
+            </svg>
+        </header>
+
+        <div class="qx-site-intro-inner">
             <div class="qx-site-intro-main">
-                <header class="qx-site-intro-header">
-                    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <pattern id="verticalLines" width="40" height="100" patternUnits="userSpaceOnUse">
-                                <line x1="0" y1="0" x2="0" y2="100" stroke="currentColor" stroke-width="1" />
-                            </pattern>
-                        </defs>
-                        
-                        <rect width="100%" height="100%" fill="url(#verticalLines)" />
-                    </svg>
-                </header>
+                <span class="qx-site-intro-tag" id="hero-tag">&lt;Blog /&gt;</span>
+                <h1 class="qx-site-intro-name" id="hero-name">QxBlog</h1>
+                <p class="qx-site-intro-title" id="hero-title">保持专注，保持思考</p>
+            </div>
 
-                <section class="qx-site-intro-section">
-                    <h1 class="qx-site-intro-meta-val" id="hero-name">QxBlog</h1>
-                    <p class="qx-site-intro-title" id="hero-title">占位符</p>
-                </section>
-
-                <section class="qx-site-intro-section-bottom-left">
-                    <span class="qx-page-hero-tag">&lt;blogDatabase/&gt;</span>
-                    <div class="qx-site-intro-meta">
-                        <div class="qx-site-intro-meta-item">
-                            <span class="qx-site-intro-meta-key">blog</span>
-                            <span class="qx-site-intro-meta-op">=</span>
-                            <span class="qx-site-intro-meta-val" id="blog-name">-</span>
-                        </div>
-                        <div class="qx-site-intro-meta-item">
-                            <span class="qx-site-intro-meta-key">author</span>
-                            <span class="qx-site-intro-meta-op">=</span>
-                            <span class="qx-site-intro-meta-val" id="blog-author">-</span>
-                        </div>
-                        <div class="qx-site-intro-meta-item">
-                            <span class="qx-site-intro-meta-key">posts</span>
-                            <span class="qx-site-intro-meta-op">=</span>
-                            <span class="qx-site-intro-meta-val" id="hero-posts">-</span>
-                        </div>
-                        <div class="qx-site-intro-meta-item">
-                            <span class="qx-site-intro-meta-key">tags</span>
-                            <span class="qx-site-intro-meta-op">=</span>
-                            <span class="qx-site-intro-meta-val" id="hero-tags">-</span>
-                        </div>
-                        <div class="qx-site-intro-meta-item">
-                            <span class="qx-site-intro-meta-key">categories</span>
-                            <span class="qx-site-intro-meta-op">=</span>
-                            <span class="qx-site-intro-meta-val" id="hero-categories">-</span>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="qx-site-intro-section-bottom-center">
-                    
-                </section>
-
-                <section class="qx-site-intro-section-bottom-right">
-                    
-                </section>
+            <div class="qx-site-intro-meter" aria-hidden="true">
+                <span class="qx-site-intro-meter-rule"></span>
+                <svg class="qx-site-intro-geo" viewBox="0 0 620 620" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <polygon class="qx-site-intro-geo-outer" points="570,310 440,535 180,535 50,310 180,85 440,85" />
+                    <polygon class="qx-site-intro-geo-inner" points="440,385 310,460 180,385 180,235 310,160 440,235" />
+                    <circle class="qx-site-intro-geo-core" cx="310" cy="310" r="8" />
+                </svg>
+                <span class="qx-site-intro-meter-rule"></span>
             </div>
         </div>
 
+        <div class="qx-site-terminal">
+            <div class="qx-site-terminal-bar">
+                <span class="qx-site-terminal-dots" aria-hidden="true">
+                    <i></i><i></i><i></i>
+                </span>
+                <span class="qx-site-terminal-path" id="hero-console">blogDatabase</span>
+                <span class="qx-site-terminal-clock" id="hero-clock">--:--:--</span>
+            </div>
 
+            <div class="qx-site-terminal-inner">
+                <dl class="qx-site-intro-meta">
+                    <div class="qx-site-intro-meta-item">
+                        <dt class="qx-site-intro-meta-key">blog</dt>
+                        <span class="qx-site-intro-meta-op" aria-hidden="true">=</span>
+                        <dd class="qx-site-intro-meta-val" id="blog-name">-</dd>
+                    </div>
+                    <div class="qx-site-intro-meta-item">
+                        <dt class="qx-site-intro-meta-key">author</dt>
+                        <span class="qx-site-intro-meta-op" aria-hidden="true">=</span>
+                        <dd class="qx-site-intro-meta-val" id="blog-author">-</dd>
+                    </div>
+                    <div class="qx-site-intro-meta-item">
+                        <dt class="qx-site-intro-meta-key">posts</dt>
+                        <span class="qx-site-intro-meta-op" aria-hidden="true">=</span>
+                        <dd class="qx-site-intro-meta-val" id="hero-posts">-</dd>
+                    </div>
+                    <div class="qx-site-intro-meta-item">
+                        <dt class="qx-site-intro-meta-key">tags</dt>
+                        <span class="qx-site-intro-meta-op" aria-hidden="true">=</span>
+                        <dd class="qx-site-intro-meta-val" id="hero-tags">-</dd>
+                    </div>
+                    <div class="qx-site-intro-meta-item">
+                        <dt class="qx-site-intro-meta-key">categories</dt>
+                        <span class="qx-site-intro-meta-op" aria-hidden="true">=</span>
+                        <dd class="qx-site-intro-meta-val" id="hero-categories">-</dd>
+                    </div>
+                </dl>
+
+                <nav class="qx-site-intro-actions">
+                    <a class="qx-site-intro-action" href="./articles/index.html">浏览文章</a>
+                    <a class="qx-site-intro-action" href="./archive/index.html">归档</a>
+                    <a class="qx-site-intro-action" href="./about/index.html">关于</a>
+                </nav>
+            </div>
+        </div>
     </section>
 
     <section class="qx-articles">

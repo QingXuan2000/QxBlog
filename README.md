@@ -170,9 +170,8 @@ bun qxBlogBuild.js --help
 | `site.description` | string | 站点描述（用于 SEO） |
 | `site.keywords` | string | 站点关键词 |
 | `site.siteCreatedAt` | string | 站点创建时间（ISO 8601） |
-| `hero.tag` | string | 首页标签文字 |
-| `hero.title` | string | 首页主标题 |
-| `hero.subtitle` | string | 首页副标题 |
+| `hero.tag` | string | 首页标签文字（渲染于主标题上方） |
+| `hero.title` | string | 首页副标题（渲染于主标题下方） |
 | `about.sections` | array | 关于页面内容区块 |
 | `about.friendLinks` | array | 友链列表 |
 | `footerContent` | array | 页脚内容 |

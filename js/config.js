@@ -53,10 +53,10 @@ export class QxConfig {
             document.title = `${d.site.title} - 首页`;
 
             const tagEl = document.getElementById('hero-tag');
-            if (tagEl) tagEl.textContent = d.hero.tag;
+            if (tagEl && d.hero.tag) tagEl.textContent = d.hero.tag;
 
             const titleEl = document.getElementById('hero-title');
-            if (titleEl) titleEl.textContent = d.hero.title;
+            if (titleEl && d.hero.title) titleEl.textContent = d.hero.title;
 
             const nameEl = document.getElementById('hero-name');
 
@@ -67,6 +67,18 @@ export class QxConfig {
 
             const blogAuthorEl = document.getElementById('blog-author');
             if (blogAuthorEl) blogAuthorEl.textContent = d.site.author;
+
+            const consoleEl = document.getElementById('hero-console');
+            if (consoleEl) {
+                let slug = d.site.url || '';
+                try {
+                    slug = new URL(slug).host || slug;
+                } catch (e) { /* keep raw value when url is not absolute */ }
+                const prefix = consoleEl.dataset.prefix || '~';
+                consoleEl.textContent = slug ? `${prefix}/${slug}` : consoleEl.textContent;
+            }
+
+            this._startClock();
         }
 
 
@@ -76,6 +88,29 @@ export class QxConfig {
         this._renderSidebar(d);
         this._renderFooter(d);
         this._renderAbout(d);
+    }
+
+    _startClock() {
+        const el = document.getElementById('hero-clock');
+        if (!el || el._qxTimer) return;
+
+        const pad = (n) => String(n).padStart(2, '0');
+        const tick = () => {
+            const now = new Date();
+            el.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        };
+
+        tick();
+        el._qxTimer = setInterval(tick, 1000);
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                clearInterval(el._qxTimer);
+                el._qxTimer = null;
+            } else if (!el._qxTimer) {
+                tick();
+                el._qxTimer = setInterval(tick, 1000);
+            }
+        });
     }
 
     _resolve(href) {
