@@ -14,11 +14,23 @@
   gap: 44px;
 }
 .wordmark {
+  display: inline-flex;
+  align-items: center;
   font-size: 29px;
   line-height: 1;
   font-weight: 750;
   letter-spacing: -1.6px;
   white-space: nowrap;
+}
+.wordmark-logo {
+  width: 1.08em;
+  height: 1.08em;
+  flex: none;
+  margin-right: 0.34em;
+  color: var(--ink);
+}
+.wordmark-logo .brand-node {
+  stroke: var(--accent);
 }
 .wordmark-dot {
   color: var(--accent);

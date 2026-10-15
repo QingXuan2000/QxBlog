@@ -194,6 +194,18 @@ html:not(.js) :is(.search-open, .theme-toggle, .menu-toggle, .header-action-divi
 .muted {
   color: var(--muted);
 }
+
+/* 页面切换动画：每次页面载入时正文入场（纯 CSS，跨浏览器通用，导航即过渡） */
+.site-main {
+  animation: qx-page-enter 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes qx-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
