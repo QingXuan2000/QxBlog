@@ -1,297 +1,137 @@
-<div align="center">
-  <img src="img/logo/dark.svg" alt="QxBlog Logo" width="120" height="120">
-  <h1>QxBlog</h1>
-  <p>基于 Discussions 驱动的静态博客系统</p>
-  <p>
-    <img src="https://img.shields.io/badge/license-GPL--3.0-blue.svg" alt="License">
-    <img src="https://img.shields.io/badge/build-GitHub%20Actions-green.svg" alt="Build">
-    <img src="https://img.shields.io/badge/deploy-GitHub%20Pages-orange.svg" alt="Deploy">
-    <img src="https://img.shields.io/badge/runtime-Bun-black.svg" alt="Bun">
-  </p>
-</div>
+# QxBlog
 
+一个以 GitHub Discussions 为内容源的静态博客。新版采用阅读优先的极简杂志布局：大字号、细线条、留白，以及深浅两套主题。
+
+文章、导航和索引在构建时生成完整 HTML。JavaScript 负责搜索、主题和阅读辅助；没有 JavaScript 也能浏览内容。
+
+## 快速开始
+
+需要 Node.js 22 或更新版本（CI 使用 Node.js 24）。
+
+```sh
+npm ci
+npm run dev
+```
+
+打开终端输出的地址，默认是 `http://127.0.0.1:5502/`。开发服务器监听源码、配置与文章变化并重新构建，刷新浏览器查看结果。修改部署路径或服务配置后请重启开发服务器。
+
+```sh
+npm run build          # 生成 dist/
+npm run preview        # 预览 dist/
+npm test               # 内容、同步、模板、搜索与构建测试
+npm run check          # 测试并构建
+```
+
+Bun 用户也可以使用 `bun install` 与 `bun run dev`；可复现 CI 使用已提交的 npm 锁文件。
+
+## 写文章
+
+### GitHub Discussions
+
+1. 开启仓库 Discussions。
+2. 在 `config/buildConfig.json` 的 `author` 填写允许发布的 **GitHub 登录名**，与站点展示名称独立。
+3. Discussion 标题和正文成为文章，Category 成为分类，Labels 成为标签。
+4. 工作流会同步文章到 `content/posts/`，构建后部署到 Pages。
+
+带 `no-article` 标签、已回答、已关闭、非指定作者的 Discussion 不发布。删除、关闭或标记回答会下架对应的同步文章；恢复后可重新发布。同步通过游标读取完整列表，不限制在前 100 篇。
+
+同步文章带有 `source: github-discussion`、仓库和 Discussion 编号标记。同步只管理带这些标记的文件；不会覆盖同 ID 的本地原创文章。远程内容读取或验证失败时不会删除原有内容。不要手工编辑同步文章的正文，下一次同步会以 Discussions 为准。
+
+本地同步需要 `GH_TOKEN`（或 `GITHUB_TOKEN`）与 `GITHUB_REPOSITORY=owner/repository` 环境变量：
+
+```sh
+npm run sync
+npm run build
+```
+
+令牌需要读取对应仓库 Discussions 的权限。普通本地开发不需要令牌。
+
+### 本地 Markdown
+
+在 `content/posts/` 新建文件，例如 `1.md`：
+
+```markdown
+---
+id: 1
+title: 我的第一篇文章
+date: '2026-10-15T09:00:00+08:00'
+tags: [随笔, 技术]
+category: 思考
+draft: false
 ---
 
-## 简介
+## 从这里开始
 
-QxBlog 是一个基于 **Discussions 驱动**的静态博客系统。通过 GitHub Discussions 管理文章，利用 GitHub Actions 自动构建并部署到 GitHub Pages。无需数据库，无需服务器，只需一个 GitHub 仓库即可拥有完整的博客站点。
-
-> 保持理性，保持思考
-
-![首页预览](img/home-page-img.png)
-
-## 功能特性
-
-### 核心功能
-
-- **Discussions 驱动写作** — 通过 GitHub Discussions 创建、编辑和管理文章，写作体验与 GitHub 原生一致
-- **自动化构建部署** — 利用 GitHub Actions 实现文章的自动构建与部署，Discussion 的创建、编辑、删除、关闭、分类变更都会触发重新构建
-- **响应式设计** — 适配桌面端和移动端设备，提供一致的阅读体验
-- **深色/浅色主题** — 支持自动跟随系统主题或手动切换
-
-### 文章功能
-
-- **Markdown 支持** — 完整支持 GitHub Flavored Markdown（GFM）语法
-- **代码高亮** — 基于 Shiki 的代码高亮，支持多种编程语言，带语言标签和一键复制功能
-- **数学公式** — 支持 KaTeX 渲染数学公式，兼容行内公式和块级公式
-- **分类与标签** — Discussion Category 作为文章分类，Discussion Labels 作为文章标签，支持按分类和标签浏览
-- **文章搜索** — 支持按标题、标签、正文内容实时搜索
-- **目录导航** — 文章页自动生成目录（TOC），便于快速跳转
-- **分页浏览** — 文章列表支持分页，可配置每页显示数量
-- **归档页面** — 按年份分组展示所有文章
-
-### SEO 与性能
-
-- **SEO 优化** — 自动生成 Open Graph、Twitter Card、结构化数据（Schema.org）等元数据
-- **懒加载** — 图片和视频默认启用懒加载
-- **View Transition** — 支持页面切换动画
-- **自定义加载动画** — 基于 SVG 的几何图形加载动画
-
-## 技术栈
-
-### 构建系统
-
-| 类别 | 技术 |
-|------|------|
-| 运行时 | Bun / Node.js |
-| 构建脚本 | 原生 JavaScript (ES Module) |
-| CLI 工具 | Commander.js |
-
-### 文章处理
-
-| 类别 | 技术 |
-|------|------|
-| Markdown 解析 | Unified / Remark |
-| Markdown 扩展 | remark-gfm (GFM 支持) |
-| 数学公式 | remark-math + rehype-katex |
-| 代码高亮 | rehype-pretty-code + Shiki |
-| 元数据解析 | remark-frontmatter + vfile-matter |
-| HTML 生成 | rehype-stringify |
-| 标题链接 | rehype-slug + rehype-autolink-headings |
-
-### 前端
-
-| 类别 | 技术 |
-|------|------|
-| 样式 | 原生 CSS (CSS Variables 主题系统) |
-| 字体 | Inter (西文) / MiSans (中文) / JetBrains Mono (代码) |
-| 交互 | 原生 JavaScript (ES Module) |
-| 图标 | 内联 SVG |
-
-### 部署
-
-| 类别 | 技术 |
-|------|------|
-| CI/CD | GitHub Actions |
-| 托管 | GitHub Pages |
-
-## 部署方式
-
-### 前置要求
-
-- GitHub 账号
-- 开启仓库的 GitHub Discussions 功能
-- 开启仓库的 GitHub Pages 功能
-
-### 快速开始
-
-1. **Fork 本仓库** 到自己的 GitHub 账号下
-
-2. **配置仓库设置**
-   - 进入仓库 `Settings` → `Discussions`，勾选 "Enable discussions for this repository"
-   - 进入仓库 `Settings` → `Pages`，Source 选择 `GitHub Actions`
-
-3. **设置分类（Categories）**
-   - 在 Discussions 页面创建分类，例如：技术、设计、随笔
-   - 分类的 slug 将用于 URL，建议使用英文或拼音
-
-4. **开始写作**
-   - 在仓库的 Discussions 中新建一个 Discussion
-   - 选择分类（Category）
-   - 添加标题和正文（支持 Markdown 语法）
-   - 为 Discussion 添加标签（Label）作为文章标签
-   - 保存后，GitHub Actions 将自动构建并部署
-
-5. **访问博客**
-   - 构建完成后，访问 `https://<你的用户名>.github.io/<仓库名>`
-
-### 本地开发
-
-```bash
-# 克隆仓库
-git clone https://github.com/<用户名>/QxBlog.git
-cd QxBlog
-
-# 安装依赖（进入构建脚本目录）
-cd .github/script
-bun install
-
-# 从本地 Markdown 文件构建所有文章（前提是已有 blogData/markdown/*.md 文件）
-bun qxBlogBuild.js local build all
-
-# 或者启动本地服务器预览
-# cd ../..
-# python -m http.server 8000
-# 或 npx serve .
+正文支持 GFM、代码高亮、数学公式、表格与图片。
 ```
 
-### 构建脚本命令
+文章链接保持为 `/posts/1.html`。`id` 必须唯一，且不能包含斜杠或目录穿越字符。日期推荐 ISO 8601，包含明确时区。支持 `updated`、`author`、`excerpt`、`tagSlugs`、`categorySlug` 和 `discussionUrl`。正文中的危险 HTML 会被移除。
 
-```bash
-# 从本地 Markdown 文件构建所有文章
-bun qxBlogBuild.js local build all
+`draft: true` 默认不发布；显式预览草稿可运行 `npm run dev -- --drafts`。不提供文章时，站点显示真实空状态，不自动发布示例内容。
 
-# 从本地 Markdown 文件构建指定 ID 的文章
-bun qxBlogBuild.js local build <id>
+## 配置与部署路径
 
-# CI 模式（从 GitHub Discussions 构建，用于 GitHub Actions）
-bun qxBlogBuild.js ci build
+- `config/siteConfig.json`：站点名称、作者、正式 URL、首页标题、个人介绍、友链和页脚。
+- `config/buildConfig.json`：发布作者、Discussion 编号偏移 `githubStartId`、每页文章条数 `maxArticlesPerPage`、展示时区 `timezoneOffset`、robots 规则。
+- `public/img/Avatar.png`：作者头像；`public/favicon.svg`：站点图标。
 
-# 删除所有文章
-bun qxBlogBuild.js local delete all
+`site.url` 必须填写正式站点地址。项目站点可使用 `https://username.github.io/QxBlog/`；构建器会据此生成 `/QxBlog/` 前缀。也可显式覆盖：
 
-# 删除指定 ID 的文章
-bun qxBlogBuild.js local delete <id>
-
-# 查看帮助
-bun qxBlogBuild.js --help
+```sh
+npm run build -- --base /QxBlog/
+npm run preview -- --base /QxBlog/
 ```
 
-## 配置说明
+站点同时生成 `feed.xml`、`sitemap.xml`、`robots.txt` 和搜索索引。静态文件全部输出到 `dist/`。额外公开文件（例如自定义域名所需的 `CNAME`）放入 `public/`。
 
-### 站点配置 (`config/siteConfig.json`)
+GitHub 仓库 Settings → Pages → Source 选择 **GitHub Actions**。工作流支持 `main` 分支 push、Discussions 事件与手动运行。Discussions/手动运行会先同步内容，只提交 `content/posts/`；构建文件不回写源码仓库。Pages 配置提供实际路径前缀。如果默认分支不是 `main`，请修改工作流的 push 分支。
 
-| 配置项 | 类型 | 说明 |
-|--------|------|------|
-| `site.name` | string | 站点名称 |
-| `site.title` | string | 页面标题后缀 |
-| `site.author` | string | 作者名称 |
-| `site.url` | string | 站点完整 URL |
-| `site.description` | string | 站点描述（用于 SEO） |
-| `site.keywords` | string | 站点关键词 |
-| `site.siteCreatedAt` | string | 站点创建时间（ISO 8601） |
-| `hero.tag` | string | 首页标签文字（渲染于主标题上方） |
-| `hero.title` | string | 首页副标题（渲染于主标题下方） |
-| `about.sections` | array | 关于页面内容区块 |
-| `about.friendLinks` | array | 友链列表 |
-| `footerContent` | array | 页脚内容 |
-| `sidebar.motto` | string | 侧边栏座右铭 |
-| `sidebar.links` | array | 侧边栏导航链接 |
+## 目录结构
 
-### 构建配置 (`config/buildConfig.json`)
-
-| 配置项 | 类型 | 说明 |
-|--------|------|------|
-| `author` | string | 构建作者标识 |
-| `timezoneOffset` | string | 时区偏移（如 `+08:00`） |
-| `githubStartId` | number | GitHub Discussion 起始编号偏移 |
-| `maxArticlesPerPage` | number | 每页显示文章数量 |
-| `robots` | object | robots.txt 配置 |
-
-## 项目结构
-
-```
-QxBlog/
-├── .github/
-│   ├── script/              # 构建脚本
-│   │   ├── package.json     # 构建依赖
-│   │   └── qxBlogBuild.js   # 主构建脚本
-│   └── workflows/
-│       └── qxblog-build.yml # GitHub Actions 工作流
-├── about/                   # 关于页面
-├── archive/                 # 归档页面
-├── articles/                # 文章列表页
-├── categories/              # 分类页面
-├── blogData/                # 博客数据
-│   ├── articles.json        # 文章索引
-│   ├── categories.json      # 分类数据
-│   ├── tags.json            # 标签数据
-│   └── markdown/            # Markdown 源文件
-├── tags/                    # 标签页面
-├── config/                  # 配置文件
-│   ├── siteConfig.json      # 站点配置
-│   └── buildConfig.json     # 构建配置
-├── css/                     # 样式文件
-│   ├── default.css          # 主样式
-│   └── katex.min.css        # KaTeX 样式
-├── fonts/                   # 字体文件
-│   ├── Inter/               # Inter 可变字体
-│   ├── JetBrainsMono/       # JetBrains Mono 字体
-│   └── MiSans/              # MiSans 可变字体
-├── img/                     # 图片资源
-│   ├── logo.svg             # 站点 Logo
-│   ├── Avatar.png           # 头像
-│   └── home-page-img.png    # 首页预览图
-├── js/                      # JavaScript 模块
-│   ├── default.js           # 主入口（模块加载、代码复制、表格包装等）
-│   ├── articles.js          # 文章列表与分页
-│   ├── archive.js           # 归档列表渲染
-│   ├── categories.js        # 分类列表渲染
-│   ├── tags.js              # 标签管理
-│   ├── config.js            # 配置加载与导航渲染
-│   ├── nav.js               # 导航栏交互
-│   ├── search.js            # 搜索功能
-│   └── toc.js               # 目录生成
-├── posts/                   # 生成的文章 HTML（构建时生成）
-├── index.html               # 首页
-├── 404.html                 # 404 页面
-├── favicon.svg              # 站点图标
-├── sitemap.xml              # 站点地图（构建时生成）
-├── robots.txt               # 爬虫规则（构建时生成）
-└── LICENSE                  # GPL-3.0 许可证
+```text
+config/                 站点和构建配置
+content/posts/          Markdown 内容
+public/                 原样复制的字体、头像、图标
+src/
+  content/              解析、规范化、渲染、GitHub 同步
+  build/                配置、资产、索引、feed 与构建编排
+  templates/            公共布局、组件和各类页面
+  styles/               tokens、布局、正文与搜索样式
+  client/               主题、导航、搜索和文章增强
+scripts/                build、dev、preview、sync 入口
+tests/                  行为测试与非生产示例
+.github/workflows/      自动构建部署
+dist/                   生成结果（Git 忽略）
 ```
 
-## 前端模块说明
+UI 改动通常位于 `src/templates/` 和 `src/styles/`；客户端只增强模板中的 `data-*` 交互标记。内容处理与页面模板通过统一 Post 数据结构连接，避免以页面 DOM 推断业务状态。
 
-| 模块 | 文件 | 功能 |
-|------|------|------|
-| QxConfig | `js/config.js` | 加载配置、渲染导航栏和侧边栏 |
-| QxNav | `js/nav.js` | 移动端菜单、主题切换、当前页面高亮 |
-| QxSearch | `js/search.js` | 实时搜索（标题/标签/正文），键盘导航 |
-| QxArticles | `js/articles.js` | 文章列表渲染、分页逻辑、分类/标签筛选 |
-| QxTags | `js/tags.js` | 标签列表加载与渲染 |
-| QxCategories | `js/categories.js` | 分类列表加载与渲染 |
-| QxArchive | `js/archive.js` | 归档列表按年份分组渲染 |
-| QxToc | `js/toc.js` | 文章目录生成、滚动高亮、点击跳转 |
+## 从旧结构迁移
 
-## 写作指南
+- 保留原有 `config/` 配置，以及文章 ID、分类和标签 slug。
+- 构建器仍可读取 `blogData/markdown/`；同 ID 时优先使用新 `content/posts/` 中的版本。确认迁移完成后可自行移除旧文件。
+- 旧 Markdown 没有来源标记时按本地内容处理。若希望它重新由 Discussions 管理，请先备份旧文件并解决同 ID 冲突，然后同步；不自动猜测文章来源。
+- 不再使用根目录页面、旧 `js/`、`css/`、JSON 索引和 `.github/script/qxBlogBuild.js`。统一使用根目录 npm 命令，部署 `dist/`。
+- `.git/qxblog-before-rebuild/` 保存此次重构前的工作区文件，包括原有未提交修改；这是本机备份，不会提交到远程。
 
-### Discussion 格式
+## 浏览器验证
 
-GitHub Discussion 的标题即为文章标题，正文即为文章内容。支持所有 GitHub Flavored Markdown 语法：
+```sh
+npx playwright install chromium
+npm run test:browser
+```
 
-- 标题、段落、列表
-- 代码块（支持语法高亮）
-- 表格
-- 任务列表
-- 数学公式（`$...$` 行内，`$$...$$` 块级）
-- 图片与链接
+Windows 上已有 Edge 时可设置 `PLAYWRIGHT_CHANNEL=msedge` 使用本机浏览器。测试启动独立的 `/QxBlog/` 子路径站点，覆盖无 JS 阅读、全文搜索、主题持久化、代码复制、目录、移动导航与布局溢出。
 
-### 使用 Category 分类
+只查看有内容的测试界面：
 
-创建 Discussion 时必须选择一个分类（Category），分类将自动作为文章的分类。例如：
-- `技术`
-- `设计`
-- `随笔`
+```sh
+npm run build -- --content tests/fixtures/posts --out .preview/demo
+npm run preview -- --out .preview/demo --port 5504
+```
 
-### 使用 Labels 标签
-
-为 Discussion 添加 Labels 即可为文章设置标签。例如：
-- `前端`
-- `JavaScript`
-- `设计思考`
-
-### 关闭/删除 Discussion
-
-- **关闭 Discussion**：文章将保留，但标记为关闭状态
-- **删除 Discussion**：文章将从博客中移除
+这些示例仅用于验证，不会进入正常 `npm run build` 的生产输出。
 
 ## 许可证
 
-本项目采用 [GNU General Public License v3.0](LICENSE) 开源许可证。
-
----
-
-<div align="center">
-  <sub>Built with ❤️ by <a href="https://github.com/QingXuan2000">QingXuanJun</a></sub>
-</div>
+[GNU General Public License v3.0](LICENSE)。
