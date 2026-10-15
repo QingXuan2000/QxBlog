@@ -1,24 +1,23 @@
+const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const escapeHtml = (value) =>
-  String(value ?? '').replace(
-    /[&<>"']/g,
-    (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char],
-  );
-export const plainText = (value) =>
-  String(value ?? '')
-    .replace(/<[^>]*>/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  String(value ?? '').replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
 export const jsonLd = (value) =>
   JSON.stringify(value).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 export const number = (value) => String(value).padStart(2, '0');
 
+const baseCache = new WeakMap();
+function siteBase(config) {
+  let base = baseCache.get(config);
+  if (base === undefined) {
+    base = `/${String(config.basePath ?? '/').replace(/^\/+|\/+$/g, '')}/`.replace(/^\/\//, '/');
+    baseCache.set(config, base);
+  }
+  return base;
+}
+
 export function localUrl(config, path = 'index.html') {
-  const base = `/${String(config.basePath ?? '/').replace(/^\/+|\/+$/g, '')}/`.replace(
-    /^\/\//,
-    '/',
-  );
   return (
-    base +
+    siteBase(config) +
     path
       .replace(/^\/+/, '')
       .split('/')
@@ -36,7 +35,7 @@ export function safeHref(value, fallback = '#') {
   return /^(https?:\/\/|mailto:)/i.test(href) ? href : fallback;
 }
 
-// Site configuration supports small, deliberately limited pieces of inline markup.
+// 站点配置仅允许一小组刻意受限的内联标记。
 export function configMarkup(value) {
   return String(value ?? '')
     .split(/(<[^>]*>)/g)
@@ -80,8 +79,18 @@ export function icon(name, className = '') {
   return `<svg class="icon ${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.arrow}</svg>`;
 }
 
+const taxonomyCache = new WeakMap();
 export function taxonomies(posts, type) {
+  let byType = taxonomyCache.get(posts);
+  if (!byType) {
+    byType = new Map();
+    taxonomyCache.set(posts, byType);
+  }
+  const cached = byType.get(type);
+  if (cached) return cached;
+
   const groups = new Map();
+  const members = new Map();
   for (const post of posts) {
     const pairs =
       type === 'tags'
@@ -90,11 +99,22 @@ export function taxonomies(posts, type) {
           ? [[post.categorySlug || post.category, post.category]]
           : [];
     for (const [slug, name] of pairs) {
-      if (!groups.has(slug)) groups.set(slug, { slug, name, posts: [] });
-      if (!groups.get(slug).posts.includes(post)) groups.get(slug).posts.push(post);
+      let group = groups.get(slug);
+      if (!group) {
+        group = { slug, name, posts: [] };
+        groups.set(slug, group);
+        members.set(slug, new Set());
+      }
+      const seen = members.get(slug);
+      if (!seen.has(post)) {
+        seen.add(post);
+        group.posts.push(post);
+      }
     }
   }
-  return [...groups.values()].sort(
+  const result = [...groups.values()].sort(
     (a, b) => b.posts.length - a.posts.length || a.name.localeCompare(b.name, 'zh-CN'),
   );
+  byType.set(type, result);
+  return result;
 }

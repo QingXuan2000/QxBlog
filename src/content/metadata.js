@@ -1,4 +1,4 @@
-/** Text remains unescaped here: templates escape values for their HTML context. */
+/** 此处文本不转义：由模板按各自 HTML 上下文转义。 */
 export function textValue(value, field, fallback = '') {
   if (value === undefined || value === null) return fallback;
   if (typeof value !== 'string' && typeof value !== 'number')

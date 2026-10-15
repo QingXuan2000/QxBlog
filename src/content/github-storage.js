@@ -24,44 +24,43 @@ export async function jsonFile(filename, fallback) {
 
 export async function readExistingSources(root, repository) {
   const entries = [];
-  for (const directory of ['content/posts', 'blogData/markdown']) {
-    for (const relative of [directory.split('/')[0], directory]) {
-      try {
-        if ((await lstat(path.join(root, relative))).isSymbolicLink())
-          throw new Error(`${relative}: source directories must not be symbolic links`);
-      } catch (error) {
-        if (error.code !== 'ENOENT') throw error;
-      }
-    }
-    let files;
+  const directory = 'content/posts';
+  for (const relative of [directory.split('/')[0], directory]) {
     try {
-      files = await readdir(path.join(root, directory), { withFileTypes: true });
+      if ((await lstat(path.join(root, relative))).isSymbolicLink())
+        throw new Error(`${relative}: source directories must not be symbolic links`);
     } catch (error) {
-      if (error.code === 'ENOENT') continue;
-      throw error;
+      if (error.code !== 'ENOENT') throw error;
     }
-    for (const file of files) {
-      if (!/\.md$/i.test(file.name)) continue;
-      if (file.isSymbolicLink())
-        throw new Error(
-          `${directory}/${file.name}: symbolic link Markdown is not supported for sync`,
-        );
-      if (!file.isFile()) continue;
-      const filename = path.join(root, directory, file.name);
-      try {
-        const previous = await readFile(filename, 'utf8');
-        const { data } = parseFrontmatter(previous);
-        const id = safeSegment(data.id ?? path.basename(file.name, path.extname(file.name)));
-        const managed =
-          data.source === 'github-discussion' &&
-          typeof data.sourceRepository === 'string' &&
-          data.sourceRepository.toLowerCase() === repository.toLowerCase() &&
-          Number.isSafeInteger(data.sourceDiscussionNumber) &&
-          data.sourceDiscussionNumber > 0;
-        entries.push({ filename, previous, id, managed, number: data.sourceDiscussionNumber });
-      } catch (error) {
-        throw new Error(`${directory}/${file.name}: ${error.message}`, { cause: error });
-      }
+  }
+  let files;
+  try {
+    files = await readdir(path.join(root, directory), { withFileTypes: true });
+  } catch (error) {
+    if (error.code === 'ENOENT') return entries;
+    throw error;
+  }
+  for (const file of files) {
+    if (!/\.md$/i.test(file.name)) continue;
+    if (file.isSymbolicLink())
+      throw new Error(
+        `${directory}/${file.name}: symbolic link Markdown is not supported for sync`,
+      );
+    if (!file.isFile()) continue;
+    const filename = path.join(root, directory, file.name);
+    try {
+      const previous = await readFile(filename, 'utf8');
+      const { data } = parseFrontmatter(previous);
+      const id = safeSegment(data.id ?? path.basename(file.name, path.extname(file.name)));
+      const managed =
+        data.source === 'github-discussion' &&
+        typeof data.sourceRepository === 'string' &&
+        data.sourceRepository.toLowerCase() === repository.toLowerCase() &&
+        Number.isSafeInteger(data.sourceDiscussionNumber) &&
+        data.sourceDiscussionNumber > 0;
+      entries.push({ filename, previous, id, managed, number: data.sourceDiscussionNumber });
+    } catch (error) {
+      throw new Error(`${directory}/${file.name}: ${error.message}`, { cause: error });
     }
   }
   return entries;
@@ -72,7 +71,7 @@ export async function applySourceChanges(root, changes) {
   const stage = await mkdtemp(path.join(root, '.qxblog-sync-'));
   const applied = [];
   try {
-    // Prepare every new file before replacing any existing source.
+    // 先备好所有新文件，再替换任何已有源文件。
     for (let index = 0; index < changes.length; index++) {
       if (changes[index].next !== null)
         await writeFile(path.join(stage, String(index)), changes[index].next, 'utf8');

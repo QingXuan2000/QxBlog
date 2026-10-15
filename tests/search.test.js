@@ -209,6 +209,11 @@ function searchFixture(fetchImpl) {
   const win = {
     fetch: fetchImpl,
     location: { href: 'https://example.com/QxBlog/', origin: 'https://example.com' },
+    setTimeout: (callback) => {
+      callback();
+      return 0;
+    },
+    clearTimeout() {},
   };
   opener.focus();
   initSearch(doc, win);

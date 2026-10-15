@@ -91,15 +91,13 @@ export async function buildSite({
       (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))
     );
   };
-  for (const sourceDir of [contentDir || 'content/posts', 'blogData/markdown']) {
-    const requested = path.resolve(root, sourceDir);
-    const contentPath = await fs.realpath(requested).catch((error) => {
-      if (error.code === 'ENOENT') return requested;
-      throw error;
-    });
-    if (overlaps(destination, contentPath) || overlaps(contentPath, destination)) {
-      throw new Error('Output directory must not overlap the content source directory');
-    }
+  const requested = path.resolve(root, contentDir || 'content/posts');
+  const contentPath = await fs.realpath(requested).catch((error) => {
+    if (error.code === 'ENOENT') return requested;
+    throw error;
+  });
+  if (overlaps(destination, contentPath) || overlaps(contentPath, destination)) {
+    throw new Error('Output directory must not overlap the content source directory');
   }
   const config = await loadConfig(root, { basePath });
   const posts = await loadPosts({ root, contentDir, includeDrafts, config });

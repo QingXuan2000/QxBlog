@@ -94,7 +94,7 @@ function codeCopyButtons() {
   };
 }
 
-// Sanitization runs before trusted renderers so generated KaTeX/Shiki markup survives.
+// 先净化再跑可信渲染器，使生成的 KaTeX/Shiki 标记得以保留。
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)

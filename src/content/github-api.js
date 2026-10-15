@@ -32,7 +32,7 @@ export async function fetchDiscussions({ repository, token, fetchImpl }) {
         signal: AbortSignal.timeout(30_000),
       });
     } catch {
-      // Do not propagate fetch errors, which can include authorization headers.
+      // 不透传 fetch 错误，其中可能携带鉴权头。
       throw new Error('GitHub request failed; existing content was preserved');
     }
     if (!response.ok)

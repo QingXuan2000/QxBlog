@@ -223,19 +223,21 @@ test('answered, closed and no-article events unpublish their source even before 
   }
 });
 
-test('keeps local originals on ID collisions, including legacy source files', async (t) => {
+test('keeps local originals on ID collisions', async (t) => {
   const root = await fixture(t);
-  await mkdir(path.join(root, 'blogData/markdown'), { recursive: true });
   const original = '---\nid: 1\ntitle: My own article\n---\nOriginal';
-  await writeFile(path.join(root, 'blogData/markdown/original.md'), original);
+  await writeFile(path.join(root, 'content/posts/original.md'), original);
   assert.equal(typeof engine.syncDiscussions, 'function');
   const result = await engine.syncDiscussions({
     root,
     env,
     fetchImpl: async () => response([discussion(1), discussion(2)]),
   });
-  assert.equal(await readFile(path.join(root, 'blogData/markdown/original.md'), 'utf8'), original);
-  assert.deepEqual(await readdir(path.join(root, 'content/posts')), ['2.md']);
+  assert.equal(await readFile(path.join(root, 'content/posts/original.md'), 'utf8'), original);
+  assert.deepEqual((await readdir(path.join(root, 'content/posts'))).sort(), [
+    '2.md',
+    'original.md',
+  ]);
   assert.equal(result.skipped, 1);
 });
 

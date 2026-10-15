@@ -82,20 +82,15 @@ test('renders safe rich Markdown with stable unique headings, math, code and pla
   assert.deepEqual((await engine.renderMarkdown(body)).toc, rendered.toc);
 });
 
-test('loads new and legacy Markdown, prioritizes new IDs and excludes drafts', async (t) => {
+test('loads Markdown, rejects duplicate IDs and excludes drafts', async (t) => {
   const root = await fixture(t);
-  await mkdir(path.join(root, 'blogData/markdown'), { recursive: true });
   await writeFile(
     path.join(root, 'content/posts/7.md'),
     '---\nid: 7\ntitle: New\ndate: 2026-01-01\ntags: [JavaScript]\n---\n# Section',
   );
   await writeFile(
-    path.join(root, 'blogData/markdown/old.md'),
-    '---\nid: 7\ntitle: Old\n---\nOld body',
-  );
-  await writeFile(
-    path.join(root, 'blogData/markdown/8.md'),
-    '---\ntitle: Legacy\ndate: 2026-02-01\n---\nLegacy body',
+    path.join(root, 'content/posts/8.md'),
+    '---\ntitle: Second\ndate: 2026-02-01\n---\nSecond body',
   );
   await writeFile(
     path.join(root, 'content/posts/draft.md'),
@@ -106,13 +101,15 @@ test('loads new and legacy Markdown, prioritizes new IDs and excludes drafts', a
   assert.deepEqual(
     posts.map(({ id, title }) => ({ id, title })),
     [
-      { id: '8', title: 'Legacy' },
+      { id: '8', title: 'Second' },
       { id: '7', title: 'New' },
     ],
   );
   assert.equal(posts[1].toc[0].id, 'section');
   assert.equal(posts[1].labels[0], 'JavaScript');
   assert.equal((await engine.loadPosts({ root, includeDrafts: true })).length, 3);
+  await writeFile(path.join(root, 'content/posts/dup.md'), '---\nid: 7\ntitle: Dup\n---\nx');
+  await assert.rejects(engine.loadPosts({ root }), /duplicate post id 7/);
 });
 
 test('treats empty content as normal and reports malformed files by name', async (t) => {
@@ -138,16 +135,11 @@ test('accepts empty frontmatter but rejects duplicate YAML keys and invalid time
   );
 });
 
-test('new drafts suppress published legacy duplicates and generated Unicode slugs remain usable', async (t) => {
+test('drafts are excluded by default and generated Unicode slugs remain usable', async (t) => {
   const root = await fixture(t);
-  await mkdir(path.join(root, 'blogData/markdown'), { recursive: true });
   await writeFile(
     path.join(root, 'content/posts/7.md'),
     '---\ntitle: Draft\ndraft: true\ntags: [中文 标签]\n---\nNew draft',
-  );
-  await writeFile(
-    path.join(root, 'blogData/markdown/7.md'),
-    '---\ntitle: Published old version\n---\nOld body',
   );
   assert.deepEqual(await engine.loadPosts({ root }), []);
   const posts = await engine.loadPosts({ root, includeDrafts: true });

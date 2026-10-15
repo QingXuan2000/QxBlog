@@ -16,7 +16,7 @@ async function rebuild() {
   }
   running = true;
   try {
-    // A fresh process also reloads changed template/content modules from disk.
+    // 重启新进程会从磁盘重新加载改动过的模板/内容模块。
     await new Promise((resolve, reject) => {
       const child = spawn(
         process.execPath,
@@ -44,7 +44,7 @@ await rebuild();
 const config = await loadConfig(process.cwd(), { basePath: values.base });
 serve({ directory: values.out, port: values.port, host: values.host, basePath: config.basePath });
 for (const directory of new Set(
-  ['src', 'config', 'content', 'public', 'blogData', values.content].filter(Boolean),
+  ['src', 'config', 'content', 'public', values.content].filter(Boolean),
 )) {
   if (!fs.existsSync(directory)) continue;
   fs.watch(directory, { recursive: true }, () => {

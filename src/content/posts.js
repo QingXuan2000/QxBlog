@@ -35,45 +35,29 @@ export async function loadPosts({
   config,
 } = {}) {
   config ??= await readConfig(root);
-  const directories = [
-    path.resolve(root, contentDir || 'content/posts'),
-    path.resolve(root, 'blogData/markdown'),
-  ];
-  const posts = new Map();
-  for (const directory of [...new Set(directories)]) {
-    const directoryIds = new Set();
-    for (const filename of await markdownFiles(directory)) {
-      try {
-        const source = await readFile(filename, 'utf8');
-        const parsed = parseFrontmatter(source);
-        const post = normalizePost(
-          parsed.data,
-          parsed.content,
-          path.basename(filename, path.extname(filename)),
-          config,
-        );
-        if (directoryIds.has(post.id)) throw new Error(`duplicate post id ${post.id}`);
-        directoryIds.add(post.id);
-        if (posts.has(post.id)) continue;
-        // Remember excluded drafts too: legacy duplicates must not resurrect them.
-        if (post.draft && !includeDrafts) {
-          posts.set(post.id, null);
-          continue;
-        }
-        const rendered = await renderMarkdown(post.body);
-        posts.set(post.id, {
-          ...post,
-          ...rendered,
-          excerpt: post.excerpt || rendered.text.slice(0, 180),
-        });
-      } catch (error) {
-        throw new Error(`${path.relative(root, filename)}: ${error.message}`, { cause: error });
-      }
+  const directory = path.resolve(root, contentDir || 'content/posts');
+  const posts = [];
+  const ids = new Set();
+  for (const filename of await markdownFiles(directory)) {
+    try {
+      const source = await readFile(filename, 'utf8');
+      const parsed = parseFrontmatter(source);
+      const post = normalizePost(
+        parsed.data,
+        parsed.content,
+        path.basename(filename, path.extname(filename)),
+        config,
+      );
+      if (ids.has(post.id)) throw new Error(`duplicate post id ${post.id}`);
+      ids.add(post.id);
+      if (post.draft && !includeDrafts) continue;
+      const rendered = await renderMarkdown(post.body);
+      posts.push({ ...post, ...rendered, excerpt: post.excerpt || rendered.text.slice(0, 180) });
+    } catch (error) {
+      throw new Error(`${path.relative(root, filename)}: ${error.message}`, { cause: error });
     }
   }
-  return [...posts.values()]
-    .filter(Boolean)
-    .sort(
-      (a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id, 'en', { numeric: true }),
-    );
+  return posts.sort(
+    (a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id, 'en', { numeric: true }),
+  );
 }

@@ -118,7 +118,7 @@ export async function syncDiscussions({
   const allowedAuthor = build.author || config.site?.author;
   if (typeof allowedAuthor !== 'string' || !allowedAuthor.trim())
     throw new Error('A configured author is required for GitHub Discussions sync');
-  const startId = Number(build.githubStartId ?? build.githubStartPageNumber ?? 1);
+  const startId = Number(build.githubStartId ?? 1);
   if (!Number.isSafeInteger(startId) || startId < 1)
     throw new Error('githubStartId must be a positive integer');
   const event = env.GITHUB_EVENT_PATH ? await jsonFile(env.GITHUB_EVENT_PATH) : null;
@@ -135,8 +135,8 @@ export async function syncDiscussions({
       throw new Error('GitHub event discussion number is invalid');
   }
 
-  // Every event reconciles the full snapshot, recovering coalesced workflow events.
-  // The current webhook's removal decision also overrides a stale API object.
+  // 每次事件都对完整快照做一次对账，补回被合并掉的工作流事件。
+  // 当前 webhook 的下架判定也会覆盖过期的 API 对象。
   const discussions = await fetchDiscussions({ repository, token, fetchImpl });
   const localIds = new Set(existing.filter((entry) => !entry.managed).map((entry) => entry.id));
   const candidates = new Map();

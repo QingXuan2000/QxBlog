@@ -1,8 +1,5 @@
-const xml = (value) =>
-  String(value ?? '').replace(
-    /[<>&"']/g,
-    (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[char],
-  );
+const XML_ESCAPES = { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' };
+const xml = (value) => String(value ?? '').replace(/[<>&"']/g, (char) => XML_ESCAPES[char]);
 
 export function absoluteURL(config, relativePath) {
   return `${config.site.url.replace(/\/$/, '')}/${relativePath.replace(/^\//, '')}`;
@@ -10,11 +7,13 @@ export function absoluteURL(config, relativePath) {
 
 export function createSitemap(config, pages, posts) {
   const dates = new Map(posts.map((post) => [`posts/${post.id}.html`, post.updated || post.date]));
+  // 逐段百分号编码，使 <loc> 与页面 canonical、站内链接保持一致。
+  const encodePath = (value) => value.split('/').map(encodeURIComponent).join('/');
   const entries = pages
     .filter((page) => page.path !== '404.html')
     .map((page) => {
       const updated = dates.get(page.path);
-      return `<url><loc>${xml(absoluteURL(config, page.path))}</loc>${updated ? `<lastmod>${xml(updated)}</lastmod>` : ''}</url>`;
+      return `<url><loc>${xml(absoluteURL(config, encodePath(page.path)))}</loc>${updated ? `<lastmod>${xml(updated)}</lastmod>` : ''}</url>`;
     });
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join('\n')}\n</urlset>\n`;
 }

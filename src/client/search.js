@@ -3,7 +3,7 @@ const normalize = (value) =>
     .normalize('NFKC')
     .toLocaleLowerCase();
 
-/** Match every whitespace-separated word, prioritizing titles and labels. */
+/** 匹配每个以空白分隔的词，标题与标签优先。 */
 export function searchPosts(posts, query) {
   const words = [...new Set(normalize(query).trim().split(/\s+/).filter(Boolean))];
   if (!words.length || !Array.isArray(posts)) return [];
@@ -51,6 +51,7 @@ export function initSearch(doc = globalThis.document, win = globalThis.window) {
   let previousFocus;
   let scrollOverflow;
   let composing = false;
+  let debounceTimer;
   const compositionKey = (event) => composing || event.isComposing || event.keyCode === 229;
 
   if (!results.id) results.id = 'qx-search-results';
@@ -177,6 +178,7 @@ export function initSearch(doc = globalThis.document, win = globalThis.window) {
 
   function restoreFocus() {
     ++revision;
+    win.clearTimeout(debounceTimer);
     composing = false;
     input.setAttribute('aria-expanded', 'false');
     results.setAttribute('aria-busy', 'false');
@@ -228,7 +230,10 @@ export function initSearch(doc = globalThis.document, win = globalThis.window) {
     )
       close();
   });
-  input.addEventListener('input', () => void update());
+  input.addEventListener('input', () => {
+    win.clearTimeout(debounceTimer);
+    debounceTimer = win.setTimeout(() => void update(), 120);
+  });
   input.addEventListener('compositionstart', () => {
     composing = true;
   });

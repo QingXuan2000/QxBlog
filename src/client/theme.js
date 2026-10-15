@@ -8,7 +8,7 @@ export function initTheme(doc = globalThis.document, win = globalThis.window) {
     const stored = win.localStorage.getItem('qx-theme');
     if (stored === 'dark' || stored === 'light') preference = stored;
   } catch {
-    /* The selected theme still works when storage is unavailable. */
+    /* 存储不可用时所选主题仍可工作。 */
   }
 
   function apply(theme) {
@@ -28,7 +28,7 @@ export function initTheme(doc = globalThis.document, win = globalThis.window) {
       try {
         win.localStorage.setItem('qx-theme', preference);
       } catch {
-        /* Keep the in-memory preference. */
+        /* 保留内存中的偏好。 */
       }
       apply(preference);
     }),

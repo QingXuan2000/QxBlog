@@ -43,7 +43,7 @@ export async function loadConfig(root, { basePath } = {}) {
       ...raw.site,
       url: `${url.origin}${prefix}`.replace(/\/$/, ''),
     },
-    hero: { title: '保持专注，保持思考', ...raw.hero },
+    hero: { title: '保持专注，保持思考。', ...raw.hero },
     about: { sections: [], friendLinks: [], ...raw.about },
     sidebar: { links: [], ...raw.sidebar },
     footerContent: raw.footerContent || [],

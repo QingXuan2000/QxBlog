@@ -17,7 +17,7 @@ export function parseFrontmatter(source) {
 }
 
 export function serializeFrontmatter(data, body) {
-  // JSON values are valid YAML; quoting every value prevents scalar injection.
+  // JSON 值本身即合法 YAML；逐值引用可防止标量注入。
   const header = Object.entries(data)
     .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
     .join('\n');

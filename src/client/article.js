@@ -102,7 +102,7 @@ export function initArticle(doc = globalThis.document, win = globalThis.window) 
         const heading = doc.getElementById(decodeURIComponent(url.hash.slice(1)));
         if (heading && body.contains(heading)) headings.push({ heading, link });
       } catch {
-        /* A malformed anchor does not disable the article. */
+        /* 锚点格式异常不影响文章其余功能。 */
       }
     });
   }

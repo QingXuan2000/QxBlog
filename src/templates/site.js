@@ -20,12 +20,9 @@ import {
 } from './components.js';
 
 function home(config, posts) {
-  const title = config.hero?.title || '保持专注，保持思考';
-  const titleParts = title.split(/[，,]/);
-  const heading =
-    titleParts.length === 2
-      ? `${e(titleParts[0])}，<br><span>${e(titleParts[1])}。</span>`
-      : e(title);
+  const title = config.hero?.title || '保持专注，保持思考。';
+  const parts = title.match(/^(.*?[，,])\s*(.+)$/);
+  const heading = parts ? `${e(parts[1])}<br><span>${e(parts[2])}</span>` : e(title);
   return `<section class="journal-hero"><div class="hero-kicker"><p class="eyebrow"><span class="accent-dot"></span>A PERSONAL JOURNAL</p><span class="hero-edition">${e(config.hero?.tag || '<Blog />')}</span></div><div class="hero-main"><h1>${heading}</h1><div class="hero-aside"><span class="hero-note-number">01 — ∞</span><p>记录沿途的所见与所思，<br>在文字里，找到自己的方向。</p><a href="${localUrl(config, 'about/index.html')}" class="text-link">关于这片小天地 ${icon('arrow')}</a></div></div><div class="hero-baseline"><span>${e(config.site.author.toUpperCase())} / NOTES & THOUGHTS</span><span>持续记录，慢慢生长 ${icon('diagonal')}</span></div></section>
     <div class="journal-grid"><section class="journal-feed" aria-labelledby="latest-title">${sectionHeading('<span id="latest-title">最新手记</span><span class="section-count">' + number(posts.length) + '</span>', `<a class="text-link" href="${localUrl(config, 'articles/index.html')}">全部文章 ${icon('arrow')}</a>`)}${
       posts.length
