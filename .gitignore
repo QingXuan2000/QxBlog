@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.preview/
+.artifacts/
+.superpowers/
+.workbuddy/
+.qxblog-build-*/
+.qxblog-sync-*/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
