@@ -165,6 +165,53 @@ npm run preview -- --base /QxBlog/
 
 换域名改 `config/siteConfig.json` 里的 `site.url`，canonical、sitemap、feed 和 og 标签都会跟着变。
 
+## 自定义主题与模板
+
+所有页面的 HTML 结构均已拆解为独立的 .html 模板文件，告别 JS 硬编码，方便自由定制主题与视觉结构：
+
+`	ext
+src/templates/
+├── layouts/
+│   └── layout.html          # 页面顶层骨架（DOCTYPE、head、body 容器）
+├── pages/
+│   ├── home.html            # 首页（Hero 区域、文章网格、分页）
+│   ├── post.html            # 文章详情页（返回按钮、标题、元信息、正文、更新时间与相邻文章导航）
+│   ├── listing.html         # 文章列表与分类/标签详情列表
+│   ├── taxonomy-index.html  # 分类/标签汇总页
+│   ├── archive.html         # 归档时间线
+│   ├── about.html           # 关于页面
+│   └── 404.html             # 404 页面
+├── partials/
+│   ├── head.html            # <head> 标签（Meta、SEO、字体预加载、KaTeX、样式等）
+│   ├── header.html          # 顶部导航栏（Logo、桌面导航、主题/搜索/目录按钮）
+│   ├── sidebar.html         # 侧边栏抽屉（头像、座右铭、导航链接）
+│   ├── toc.html             # 文章目录侧边栏
+│   ├── footer.html          # 页脚版权与链接
+│   ├── search-dialog.html   # 全站搜索浮层
+│   ├── curtain.html         # 首屏加载幕布与跑马灯
+│   └── back-to-top.html     # 返回顶部按钮
+└── components/
+    ├── page-hero.html       # 页面顶部横幅组件
+    ├── article-card.html    # 文章卡片行组件
+    ├── pagination.html      # 分页条组件
+    └── empty-state.html     # 空状态组件
+`
+
+### 模板语法
+
+内置零依赖模板引擎，采用类似 EJS 的直观语法：
+
+- <%= value %>：自动 HTML 转义输出（安全输出文字，如 <%= post.title %>）
+- <%- value %>：原始 HTML 输出（渲染富文本或正文，如 <%- post.html %>）
+- <% if (...) { %> ... <% } %>：条件分支与循环控制语句
+- <%- include('partials/header.html') %>：包含与复用子模板
+
+### 主题覆盖机制
+
+除了直接编辑 src/templates/ 下的文件，你还可以在项目根目录下创建 	emplates/ 目录：
+例如在根目录放置 	emplates/partials/footer.html，引擎将优先使用根目录下的模板，无需修改引擎源码即可实现主题覆盖与自定义。开发服务器（
+pm run dev）会自动监听 src/ 与 	emplates/ 的变动并实时重载。
+
 ## 目录结构
 
 ```text

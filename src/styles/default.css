@@ -42,6 +42,14 @@
   font-display: swap;
 }
 
+/* Allegro - 首页大字字体 */
+@font-face {
+  font-family: 'Allegro';
+  src: url('../../fonts/Allegro/Allegro-2.otf') format('opentype');
+  font-style: normal;
+  font-display: swap;
+}
+
 /* 这里不要写 @view-transition { navigation: auto }。
    它会给每次跨文档跳转都启用原生转场，而下面那些 ::view-transition-* 规则
    （1s 左滑）只服务于换主题这种同文档过渡。两者叠在页面导航上会变成
@@ -488,8 +496,8 @@ a:hover {
   border: 0;
   /* 等宽字形的笔画本身粗细均匀，加到 900 会糊成一团，压到 500 更像终端输出。
        字距必须归零，负值会让等宽字母的侧边距互相吃掉，直接粘在一起。 */
-  font-family: var(--font-mono);
-  font-weight: 500;
+  font-family: 'Allegro', var(--font-mono);
+  font-weight: 400;
   font-size: min(15vw, var(--hero-fit, 15vw), 15rem);
   line-height: 1.08;
   letter-spacing: 0;
@@ -506,6 +514,8 @@ a:hover {
 .s-hero .s__title__word {
   display: block;
   white-space: nowrap;
+  letter-spacing: 1.3vw;
+  margin-bottom: -25px;
 }
 
 /* ---- 4. 二进制分隔条 ---- */
@@ -2289,8 +2299,8 @@ dialog.qx-search {
 }
 
 dialog.qx-search::backdrop {
-  background: color-mix(in srgb, var(--bg-body) 70%, transparent);
-  backdrop-filter: blur(2px);
+  background: transparent;
+  backdrop-filter: none;
 }
 
 /* 唤出时整块从视口顶部压下来，移出时原路向上收走。
