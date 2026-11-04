@@ -1,3 +1,4 @@
+import { updateGiscusTheme } from './comment.js';
 /* 深浅主题切换。
 
    首帧的主题由 head 里的内联脚本定好，这里接管之后的交互。主题来源有三处，
@@ -26,6 +27,7 @@ export function initTheme(doc = globalThis.document, win = globalThis.window) {
       button.setAttribute('aria-label', theme === 'dark' ? '切换到浅色主题' : '切换到深色主题');
       button.setAttribute('title', theme === 'dark' ? '切换到浅色主题' : '切换到深色主题');
     });
+    updateGiscusTheme(theme, doc);
   }
 
   function commit(theme) {

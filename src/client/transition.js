@@ -1,13 +1,18 @@
 /**
  * 页面转场和首屏加载幕布。
- * 纯粹、无光晕、无圆角的精准几何终端风格。
+ * 纯粹、无光晕、无圆角的精准几何终端 HUD 风格。
+ *
  * 实时显示正在加载的目标页面路径（中文 URL 自动解码），并展示自检加载过程阶段状态机。
+ * 参考 https://wodniack.dev/ 的生命周期控制：
+ * - 只有当页面与核心资源真实加载完成（document.readyState === "complete" 且 document.fonts.ready）时，
+ *   才会将进度推进至 100% 并收回加载幕布。
+ * - 期间使用 html.is-scroll-blocked 严格锁定页面滚动，并拦截穿透点击。
+ * - 加载就绪后向 documentElement 注入 is-loaded，并向全局派发 siteLoaded 事件。
  */
 const ENTER_MS = 220;
 const EXIT_MS = 380;
 const BOOT_TICK_MS = 16;
-const BOOT_STEP = 3;
-const BOOT_MAX_MS = 950;
+const BOOT_STEP = 2.4;
 const MEMO_KEY = 'qx-nav';
 const MEMO_TARGET = 'qx-nav-target';
 
@@ -140,27 +145,60 @@ function createLayer(doc) {
   return layer;
 }
 
+/**
+ * 等待整页所有关键资源真实加载完成
+ * 参考 wodniack.dev: document.readyState === 'complete' || window load
+ */
+function whenPageReady(doc, win) {
+  const domLoaded = new Promise((resolve) => {
+    if (doc.readyState === 'complete') {
+      resolve();
+      return;
+    }
+    const handler = () => {
+      win.removeEventListener('load', handler);
+      resolve();
+    };
+    win.addEventListener('load', handler, { once: true });
+  });
+
+  const fontsLoaded =
+    doc?.fonts?.ready && typeof doc.fonts.ready.then === 'function'
+      ? doc.fonts.ready.catch(() => {})
+      : Promise.resolve();
+
+  return Promise.all([domLoaded, fontsLoaded]);
+}
+
 export function initTransition(doc = globalThis.document, win = globalThis.window) {
   if (!doc?.body || !win?.addEventListener) return;
+  if (doc.__qxTransitionInit) return;
+  doc.__qxTransitionInit = true;
 
   const reduced = win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const existing = doc.querySelector('.qx-transition');
   if (reduced) {
     existing?.remove();
+    doc.documentElement.classList.remove('is-scroll-blocked');
+    doc.documentElement.classList.add('is-loaded');
     return;
   }
 
   const layer = existing || createLayer(doc);
+  // 脚本接管后取消纯 CSS 逃逸动画
+  layer.style.animation = 'none';
+
   const count = layer.querySelector('.qx-transition__count');
   const label = layer.querySelector('.qx-transition__label');
   const targetPathEl = layer.querySelector('.qx-transition__target-path');
-  const barFill = layer.querySelector('.qx-transition__bar-fill') || layer.querySelector('.qx-transition__bar i');
+  const barFill = layer.querySelector('.qx-transition__bar-fill, .qx-transition__bar i');
   const hexEl = layer.querySelector('.qx-transition__hex');
 
   const updateProgress = (val, pathText, customStageText) => {
-    if (count) count.textContent = String(val).padStart(3, '0');
-    if (hexEl) hexEl.textContent = '0x' + val.toString(16).toUpperCase().padStart(2, '0');
-    if (barFill) barFill.style.transform = `scaleX(${val / 100})`;
+    const rounded = Math.round(val);
+    if (count) count.textContent = String(rounded).padStart(3, '0');
+    if (hexEl) hexEl.textContent = '0x' + rounded.toString(16).toUpperCase().padStart(2, '0');
+    if (barFill) barFill.style.transform = `scaleX(${rounded / 100})`;
 
     if (pathText !== undefined && targetPathEl) {
       targetPathEl.textContent = pathText;
@@ -170,7 +208,7 @@ export function initTransition(doc = globalThis.document, win = globalThis.windo
       if (customStageText) {
         label.textContent = customStageText;
       } else {
-        const stage = BOOT_STAGES.find((s) => val <= s.max);
+        const stage = BOOT_STAGES.find((s) => rounded <= s.max);
         if (stage) label.textContent = stage.text;
       }
     }
@@ -181,10 +219,13 @@ export function initTransition(doc = globalThis.document, win = globalThis.windo
 
   const reset = () => {
     layer.style.transition = 'none';
+    if (barFill) barFill.style.transition = 'none';
     layer.classList.remove('is-active', 'is-out', 'is-boot');
     void layer.offsetWidth;
     layer.style.transition = '';
+    if (barFill) barFill.style.transition = '';
     updateProgress(0, '', 'STANDBY');
+    doc.documentElement.classList.remove('is-scroll-blocked');
     busy = false;
   };
 
@@ -195,6 +236,8 @@ export function initTransition(doc = globalThis.document, win = globalThis.windo
       if (done) return;
       done = true;
       layer.removeEventListener('transitionend', onEnd);
+      // 关键修复：划出屏幕后立即 display = 'none' 隐藏，防止二次重绘或误触动画
+      layer.style.display = 'none';
       reset();
     };
     const onEnd = (event) => {
@@ -220,60 +263,107 @@ export function initTransition(doc = globalThis.document, win = globalThis.windo
 
   if (entering) {
     busy = true;
-    const currentName = targetPath || pathOf(win.location.pathname, win);
-    updateProgress(100, currentName, '[ OK ] DESTINATION REACHED');
+    doc.documentElement.classList.add('is-scroll-blocked');
+    const currentName = targetPath || pathOf(win.location.pathname, win) || 'index.html';
 
-    if (!isBoot) {
-      layer.style.transition = 'none';
-      layer.classList.add('is-active');
-      void layer.offsetWidth;
-      layer.style.transition = '';
-    }
-    win.requestAnimationFrame(() => win.requestAnimationFrame(open));
-  } else if (isBoot) {
-    busy = true;
-    const currentName = pathOf(win.location.pathname, win);
-    updateProgress(0, currentName);
+    layer.style.display = 'flex';
+    layer.style.transition = 'none';
+    layer.classList.add('is-active');
+    layer.classList.remove('is-boot');
+    void layer.offsetWidth;
+    layer.style.transition = '';
 
-    let value = 0;
-    let loaded = doc.readyState === 'complete';
-    let opened = false;
+    let progress = 25;
+    updateProgress(progress, currentName, 'TRANSMIT // SWITCHING VIEWPORT...');
 
-    const maybeLift = () => {
-      if (opened || value < 100 || !loaded) return;
-      opened = true;
+    let pageReady = false;
+    let finished = false;
+
+    // 只有真实加载成功后才放行
+    whenPageReady(doc, win).then(() => {
+      pageReady = true;
+    });
+
+    const finishNav = () => {
+      if (finished) return;
+      finished = true;
       win.clearInterval(timer);
-      updateProgress(100, currentName, '[05/05] [ READY ] ACCESS GRANTED');
-      win.setTimeout(open, 80);
+      updateProgress(100, currentName, '[ OK ] DESTINATION REACHED');
+      doc.documentElement.classList.add('is-loaded');
+      win.dispatchEvent?.(new CustomEvent('siteLoaded'));
+      win.setTimeout(open, 100);
     };
 
     const timer = win.setInterval(() => {
-      value = Math.min(100, value + BOOT_STEP);
-      updateProgress(value, currentName);
-      if (value >= 100) {
-        win.clearInterval(timer);
-        maybeLift();
+      if (!pageReady) {
+        // 未加载完成前最多平滑递增至 92% 并悬停等待，不提前收回
+        if (progress < 92) {
+          progress = Math.min(92, progress + 3);
+          const stage = NAV_STAGES.find((s) => Math.round(progress) <= s.max);
+          updateProgress(progress, currentName, stage ? stage.text : 'ROUTING...');
+        }
+      } else {
+        // 资源完全就绪后迅速推满至 100% 并收回
+        progress = Math.min(100, progress + 8);
+        if (progress >= 100) {
+          finishNav();
+        } else {
+          updateProgress(progress, currentName, 'TRANSMIT // FINALIZING...');
+        }
+      }
+    }, 18);
+
+    // 极限制兜底（10秒），防止外部资源彻底死锁
+    win.setTimeout(() => {
+      pageReady = true;
+    }, 10000);
+  } else if (isBoot) {
+    busy = true;
+    doc.documentElement.classList.add('is-scroll-blocked');
+    const currentName = pathOf(win.location.pathname, win) || 'index.html';
+    layer.style.display = 'flex';
+    updateProgress(0, currentName);
+
+    let progress = 0;
+    let pageReady = false;
+    let finished = false;
+
+    // 监听真实加载完成状态
+    whenPageReady(doc, win).then(() => {
+      pageReady = true;
+    });
+
+    const finishBoot = () => {
+      if (finished) return;
+      finished = true;
+      win.clearInterval(timer);
+      updateProgress(100, currentName, '[05/05] [ READY ] ACCESS GRANTED');
+      doc.documentElement.classList.add('is-loaded');
+      win.dispatchEvent?.(new CustomEvent('siteLoaded'));
+      win.setTimeout(open, 120);
+    };
+
+    const timer = win.setInterval(() => {
+      if (!pageReady) {
+        // 未加载完成前，平滑走过阶段，并在 92% 处等待，不提前收回
+        if (progress < 92) {
+          progress = Math.min(92, progress + BOOT_STEP);
+          updateProgress(progress, currentName);
+        }
+      } else {
+        // 资源真实加载成功，迅速平滑收尾推至 100%
+        progress = Math.min(100, progress + 6);
+        updateProgress(progress, currentName);
+        if (progress >= 100) {
+          finishBoot();
+        }
       }
     }, BOOT_TICK_MS);
 
-    if (!loaded) {
-      win.addEventListener(
-        'load',
-        () => {
-          loaded = true;
-          maybeLift();
-        },
-        { once: true },
-      );
-    }
-
+    // 极限制兜底（10秒），防止外链资源死锁
     win.setTimeout(() => {
-      if (opened) return;
-      opened = true;
-      updateProgress(100, currentName, '[05/05] [ READY ] ACCESS GRANTED');
-      win.clearInterval(timer);
-      win.setTimeout(open, 50);
-    }, BOOT_MAX_MS);
+      pageReady = true;
+    }, 10000);
   }
 
   doc.addEventListener('click', (event) => {
@@ -289,28 +379,36 @@ export function initTransition(doc = globalThis.document, win = globalThis.windo
 
     busy = true;
     event.preventDefault();
+    doc.documentElement.classList.add('is-scroll-blocked');
 
     const dest = pathOf(anchor.href, win);
-    updateProgress(0, dest, 'ROUTING // PREPARING PAYLOAD...');
+    // 单次平滑切场：显示幕布并进场覆盖
+    layer.style.display = 'flex';
+    layer.style.transition = 'none';
+    layer.classList.remove('is-out');
+    void layer.offsetWidth;
+    layer.style.transition = '';
+
+    updateProgress(20, dest, 'ROUTING // PREPARING PAYLOAD...');
     layer.classList.add('is-active');
 
-    let value = 0;
-    const timer = win.setInterval(() => {
-      value = Math.min(100, value + 14);
-      const stage = NAV_STAGES.find((s) => value <= s.max);
-      updateProgress(value, dest, stage ? stage.text : 'ROUTING...');
-    }, 20);
-
     win.setTimeout(() => {
-      win.clearInterval(timer);
       try {
         win.sessionStorage.setItem(MEMO_KEY, '1');
         win.sessionStorage.setItem(MEMO_TARGET, dest);
       } catch {}
       win.location.assign(anchor.href);
     }, ENTER_MS);
+
+    // 路由跳转超时保护（6秒未离开当前页则解除阻断）
+    win.setTimeout(() => {
+      if (busy && doc.visibilityState === 'visible') {
+        reset();
+      }
+    }, 6000);
   });
 
+  // 关键修复：必须检查 event.persisted，正常页面初始加载时绝对不能执行 reset()
   win.addEventListener('pageshow', (event) => {
     if (!event.persisted) return;
     reset();
